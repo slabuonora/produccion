@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Operaciones – MobCloud + Corte (Tabs)</title>
+
+  <style>
+    :root{
+      --bg:#070a10;
+      --card:#0d1117;
+      --card2:#111a24;
+      --txt:#e7edf6;
+      --muted:#9fb0c3;
+      --border:#223247;
+
+      --success:#00ff88;
+      --warning:#ffcc00;
+      --danger:#ff4d4d;
+      --accent:#00f2ff;
+
+      --shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(circle at 50% 0%, #121a24 0%, #070a10 60%, #05070c 100%);
+      color:var(--txt);
+      min-height:100vh;
+    }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:14px 18px;
+      border-bottom:1px solid var(--border);
+      background: rgba(7,10,16,0.6);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .brand .title{
+      font-size:18px;
+      font-weight:900;
+      letter-spacing:0.06em;
+    }
+    .brand .sub{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .hdr-right{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .pill{
+      font-size:12px;
+      color:var(--muted);
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .btn{
+      font-size:12px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid #2b3e55;
+      background:#132233;
+      color:var(--txt);
+      cursor:pointer;
+    }
+    .btn:hover{ filter: brightness(1.08); }
+    .btn:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .tab{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      color:var(--muted);
+      padding:8px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:12px;
+      letter-spacing:0.04em;
+      user-select:none;
+    }
+    .tab.active{
+      color: var(--txt);
+      border-color: rgba(0,242,255,0.35);
+      box-shadow: 0 0 0 2px rgba(0,242,255,0.08);
+    }
+
+    main{
+      padding:16px 18px 24px;
+      display:grid;
+      gap:14px;
+    }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+    }
+
+    .span-12{ grid-column: span 12; }
+    .span-8{ grid-column: span 8; }
+    .span-7{ grid-column: span 7; }
+    .span-6{ grid-column: span 6; }
+    .span-5{ grid-column: span 5; }
+    .span-4{ grid-column: span 4; }
+    .span-3{ grid-column: span 3; }
+
+    .k{
+      font-size:11px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width: 180px;
+    }
+    label{
+      font-size:11px;
+      color:var(--muted);
+      letter-spacing:0.06em;
+      text-transform:uppercase;
+    }
+    input, select{
+      background: rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      color: var(--txt);
+      border-radius:10px;
+      padding:10px 10px;
+      outline:none;
+      font-size:13px;
+    }
+    input::placeholder{ color: rgba(159,176,195,0.6); }
+    select option{ background:#0b111a; }
+
+    .metrics{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+    }
+    .metric{
+      background: rgba(255,255,255,0.02);
+      border:1px solid rgba(34,50,71,0.65);
+      border-radius:14px;
+      padding:12px;
+    }
+    .metric .m-k{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+    .metric .m-v{ font-size:26px; font-weight:900; margin-top:6px; }
+    .metric .m-s{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th, td{
+      padding:10px 8px;
+      border-bottom:1px solid rgba(34,50,71,0.7);
+      vertical-align:top;
+    }
+    th{
+      text-align:left;
+      color:var(--muted);
+      font-size:11px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      font-weight:800;
+    }
+
+    .tag{
+      display:inline-block;
+      padding:3px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+    }
+    .tag.ok{ color: var(--success); border-color: rgba(0,255,136,0.25); background: rgba(0,255,136,0.06); }
+    .tag.warn{ color: var(--warning); border-color: rgba(255,204,0,0.25); background: rgba(255,204,0,0.06); }
+    .tag.bad{ color: var(--danger); border-color: rgba(255,77,77,0.25); background: rgba(255,77,77,0.06); }
+
+    .muted{ color: var(--muted); }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .right{ text-align:right; }
+    .nowrap{ white-space:nowrap; }
+
+    .hidden{ display:none !important; }
+
+    /* Print */
+    @media print {
+      header, .no-print { display:none !important; }
+      body { background: white !important; color: #111 !important; }
+      .card { box-shadow:none !important; border: 1px solid #ddd !important; }
+      table, th, td { border-color:#ddd !important; color:#111 !important; }
+      .tag { border-color:#999 !important; color:#111 !important; background:transparent !important; }
+      .muted { color:#333 !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      <div class="title">OPERACIONES</div>
+      <div class="sub">MobCloud + Corte • Supabase</div>
+    </div>
+
+    <div class="hdr-right">
+      <div class="tabs no-print">
+        <div class="tab active" data-tab="produccion">Producción</div>
+        <div class="tab" data-tab="compras">Compras</div>
+        <div class="tab" data-tab="imprimir">Imprimir</div>
+      </div>
+
+      <div class="pill">SYNC: <span id="lastSync">-</span></div>
+      <button class="btn no-print" id="btnRefresh">Refrescar</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===================== -->
+    <!-- TAB: PRODUCCION -->
+    <!-- ===================== -->
+    <section id="tab-produccion" class="card">
+      <div class="k">Producción • Backlog</div>
+
+      <div class="grid no-print">
+        <div class="span-12">
+          <div class="row">
+            <div class="field">
+              <label>Línea</label>
+              <select id="prodLine">
+                <option value="">Todas</option>
+                <!-- Se llena dinámicamente -->
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Estados</label>
+              <input id="prodStatus" placeholder="Ej: 7,13,17" value="7,13,17,18,19,21,22"/>
+            </div>
+
+            <div class="field">
+              <label>Buscar (código/cliente)</label>
+              <input id="prodSearch" placeholder="CJ7 / U901 / cliente..." />
+            </div>
+
+            <div class="field">
+              <label>Mostrar</label>
+              <select id="prodLimit">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="span-12">
+          <div class="metrics">
+            <div class="metric">
+              <div class="m-k">Servicios</div>
+              <div class="m-v" id="mServices">-</div>
+              <div class="m-s">filtrados</div>
+            </div>
+            <div class="metric">
+              <div class="m-k">Vencidos</div>
+              <div class="m-v" id="mOverdue">-</div>
+              <div class="m-s">estimated_delivery &lt; hoy</div>
+            </div>
+            <div class="metric">
+              <div class="m-k">Con enchape</div>
+              <div class="m-v" id="mEdge">-</div>
+              <div class="m-s">edge_used = 1</div>
+            </div>
+            <div class="metric">
+              <div class="m-k">Con mecanizado</div>
+              <div class="m-v" id="mMach">-</div>
+              <div class="m-s">machining_used = 1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="span-12">
+          <table>
+            <thead>
+              <tr>
+                <th class="nowrap">Entrega</th>
+                <th>Servicio</th>
+                <th>Línea</th>
+                <th class="nowrap">Status</th>
+                <th class="nowrap">Corte</th>
+                <th class="nowrap">Enchape</th>
+                <th class="nowrap">Mecanizado</th>
+                <th class="nowrap">Packing</th>
+                <th class="right nowrap">Cut (plan)</th>
+              </tr>
+            </thead>
+            <tbody id="prodTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== -->
+    <!-- TAB: COMPRAS -->
+    <!-- ===================== -->
+    <section id="tab-compras" class="card hidden">
+      <div class="k">Compras • Próximos días</div>
+
+      <div class="grid no-print">
+        <div class="span-12">
+          <div class="row">
+            <div class="field">
+              <label>Próximos días</label>
+              <select id="buyDays">
+                <option value="7" selected>7</option>
+                <option value="14">14</option>
+                <option value="30">30</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Línea</label>
+              <select id="buyLine">
+                <option value="">Todas</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Estados</label>
+              <input id="buyStatus" placeholder="Ej: 7,13,17" value="7,13,17,18,19,21,22"/>
+            </div>
+
+            <div class="field">
+              <label>Buscar item</label>
+              <input id="buySearch" placeholder="tabl/058 / parana / tornillo..." />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="span-12">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Item</th>
+                <th>Descripción</th>
+                <th class="right">Cantidad</th>
+                <th>Unidad</th>
+                <th class="right">Costo est.</th>
+              </tr>
+            </thead>
+            <tbody id="buyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== -->
+    <!-- TAB: IMPRIMIR -->
+    <!-- ===================== -->
+    <section id="tab-imprimir" class="card hidden">
+      <div class="k">Imprimir • Checklist herrajes</div>
+
+      <div class="grid no-print">
+        <div class="span-12">
+          <div class="row">
+            <div class="field" style="min-width:340px;">
+              <label>Servicio</label>
+              <select id="printService">
+                <option value="">Seleccionar...</option>
+              </select>
+            </div>
+
+            <button class="btn" id="btnLoadChecklist">Cargar checklist</button>
+            <button class="btn" id="btnPrint" disabled>Imprimir</button>
+          </div>
+          <div class="sub" style="margin-top:10px;">
+            Tip: elegí un servicio y presioná “Cargar checklist”. Luego “Imprimir”.
+          </div>
+        </div>
+      </div>
+
+      <div id="printArea" class="grid">
+        <div class="span-12">
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div>
+              <div style="font-size:18px; font-weight:900;">Checklist de herrajes</div>
+              <div class="muted" id="printHeader">—</div>
+            </div>
+            <div class="mono muted" id="printServiceId"></div>
+          </div>
+        </div>
+
+        <div class="span-12">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:52px;">OK</th>
+                <th>Componente</th>
+                <th class="right nowrap">Cant.</th>
+                <th class="nowrap">Código</th>
+                <th class="right nowrap">Redondeo</th>
+              </tr>
+            </thead>
+            <tbody id="printTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="span-12 muted" style="font-size:12px;">
+          Nota: “Cant.” ya viene redondeada según la regla de MobCloud (rounding).
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // ========= CONFIG =========
+    const SUPABASE_URL = "https://qnjizqowddtvzzfillmo.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Agu_I1nw4mY1qRARQBbaHQ_6lTWsFTh";
+    // ==========================
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ---------- helpers ----------
+    function fmtDate(isoDate){
+      if(!isoDate) return "-";
+      // isoDate "YYYY-MM-DD"
+      return isoDate;
+    }
+    function fmtTs(ts){
+      if(!ts) return "-";
+      const d = new Date(ts);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const DD = String(d.getDate()).padStart(2,'0');
+      const MM = String(d.getMonth()+1).padStart(2,'0');
+      const YY = d.getFullYear();
+      return `${YY}-${MM}-${DD} ${hh}:${mm}`;
+    }
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+    function csvToSet(csv){
+      const raw = (csv||"").split(",").map(x=>x.trim()).filter(Boolean);
+      return new Set(raw);
+    }
+
+    // ---------- tabs ----------
+    const tabs = document.querySelectorAll(".tab");
+    function setTab(name){
+      tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+      document.getElementById("tab-produccion").classList.toggle("hidden", name!=="produccion");
+      document.getElementById("tab-compras").classList.toggle("hidden", name!=="compras");
+      document.getElementById("tab-imprimir").classList.toggle("hidden", name!=="imprimir");
+    }
+    tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
+
+    // ---------- data state ----------
+    let cachedServices = [];   // mob_services
+    let cachedLines = [];      // production_line_name distinct
+
+    // ---------- load lines for selects ----------
+    async function refreshLines(){
+      const { data, error } = await sb
+        .from("mob_services")
+        .select("production_line_name")
+        .not("production_line_name","is",null)
+        .limit(10000);
+
+      if(error) throw error;
+
+      const lines = Array.from(new Set((data||[])
+        .map(x => x.production_line_name)
+        .filter(Boolean)))
+        .sort((a,b)=>a.localeCompare(b));
+
+      cachedLines = lines;
+
+      const prodLine = document.getElementById("prodLine");
+      const buyLine = document.getElementById("buyLine");
+
+      // limpiar (mantener 'Todas')
+      prodLine.innerHTML = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+      buyLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+    }
+
+    // ---------- Producción: traer servicios ----------
+    async function refreshServices(){
+      const { data, error } = await sb
+        .from("mob_services")
+        .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery, allowed_at, step_cut_at, step_edge_at, step_machining_at, step_packing_at, edge_used, machining_used, packing_allowed, cutting_times")
+        .order("estimated_delivery", { ascending: true, nullsFirst: false })
+        .limit(10000);
+
+      if(error) throw error;
+      cachedServices = data || [];
+    }
+
+    function computeMetrics(services){
+      const today = new Date();
+      const todayYMD = today.toISOString().slice(0,10);
+
+      let overdue = 0, edge = 0, mach = 0;
+      for(const s of services){
+        if(s.estimated_delivery && s.estimated_delivery < todayYMD) overdue++;
+        if(Number(s.edge_used||0) === 1) edge++;
+        if(Number(s.machining_used||0) === 1) mach++;
+      }
+      document.getElementById("mServices").textContent = services.length;
+      document.getElementById("mOverdue").textContent = overdue;
+      document.getElementById("mEdge").textContent = edge;
+      document.getElementById("mMach").textContent = mach;
+    }
+
+    function renderProductionTable(){
+      const line = document.getElementById("prodLine").value;
+      const statusCsv = document.getElementById("prodStatus").value;
+      const search = document.getElementById("prodSearch").value.trim().toLowerCase();
+      const limit = Number(document.getElementById("prodLimit").value || 100);
+
+      const statusSet = csvToSet(statusCsv);
+
+      let filtered = cachedServices.filter(s => {
+        if(line && s.production_line_name !== line) return false;
+        if(statusSet.size && !statusSet.has(String(s.status))) return false;
+        if(search){
+          const a = (s.internal_code||"").toLowerCase();
+          const b = (s.clients_names||"").toLowerCase();
+          if(!a.includes(search) && !b.includes(search)) return false;
+        }
+        return true;
+      }).slice(0, limit);
+
+      computeMetrics(filtered);
+
+      const tbody = document.getElementById("prodTbody");
+      tbody.innerHTML = "";
+
+      for(const s of filtered){
+        const cut = s.step_cut_at ? `<span class="tag ok">OK</span>` : `<span class="tag bad">PEND</span>`;
+        const edge = (Number(s.edge_used||0)===1)
+          ? (s.step_edge_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+          : `<span class="tag">N/A</span>`;
+        const mach = (Number(s.machining_used||0)===1)
+          ? (s.step_machining_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+          : `<span class="tag">N/A</span>`;
+        const pack = (Number(s.packing_allowed||0)===1)
+          ? (s.step_packing_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+          : `<span class="tag">N/A</span>`;
+
+        const code = escapeHtml(s.internal_code || "");
+        const client = escapeHtml(s.clients_names || "");
+        const lineName = escapeHtml(s.production_line_name || "-");
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="nowrap">${fmtDate(s.estimated_delivery)}</td>
+          <td><div style="font-weight:900;">${code}</div><div class="muted">${client}</div><div class="mono muted">#${s.service_id}</div></td>
+          <td>${lineName}</td>
+          <td class="nowrap">${s.status ?? "-"}</td>
+          <td class="nowrap">${cut}</td>
+          <td class="nowrap">${edge}</td>
+          <td class="nowrap">${mach}</td>
+          <td class="nowrap">${pack}</td>
+          <td class="right nowrap">${s.cutting_times ?? "-"}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ---------- Compras: RPC fn_lista_compras_filtrada ----------
+    async function refreshPurchases(){
+      const days = Number(document.getElementById("buyDays").value || 7);
+      const line = document.getElementById("buyLine").value || null;
+      const status = document.getElementById("buyStatus").value || null;
+
+      const { data, error } = await sb.rpc("fn_lista_compras_filtrada", {
+        p_days: days,
+        p_line_name: (line && line.trim() !== "") ? line : null,
+        p_status_list: (status && status.trim() !== "") ? status : null
+      });
+
+      if(error) throw error;
+
+      const search = document.getElementById("buySearch").value.trim().toLowerCase();
+      let rows = (data || []);
+      if(search){
+        rows = rows.filter(r => {
+          return String(r.category||"").toLowerCase().includes(search)
+            || String(r.item_key||"").toLowerCase().includes(search)
+            || String(r.description||"").toLowerCase().includes(search);
+        });
+      }
+
+      const tbody = document.getElementById("buyTbody");
+      tbody.innerHTML = "";
+
+      for(const r of rows){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="nowrap"><span class="tag">${escapeHtml(r.category)}</span></td>
+          <td class="mono nowrap">${escapeHtml(r.item_key)}</td>
+          <td>${escapeHtml(r.description)}</td>
+          <td class="right nowrap">${Number(r.qty||0).toFixed(2).replace(/\.00$/,'')}</td>
+          <td class="nowrap">${escapeHtml(r.unit)}</td>
+          <td class="right nowrap">${Number(r.cost_estimated||0).toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ---------- Imprimir: cargar servicios y checklist ----------
+    function populatePrintSelect(){
+      const sel = document.getElementById("printService");
+      sel.innerHTML = `<option value="">Seleccionar...</option>` +
+        cachedServices
+          .slice()
+          .sort((a,b)=>String(a.internal_code||"").localeCompare(String(b.internal_code||"")))
+          .map(s => {
+            const label = `${s.internal_code || s.service_id} — ${s.clients_names || ""}`.trim();
+            return `<option value="${s.service_id}">${escapeHtml(label)}</option>`;
+          }).join("");
+    }
+
+    async function loadChecklistForService(serviceId){
+      const { data, error } = await sb.rpc("fn_checklist_herrajes", { p_service_id: Number(serviceId) });
+      if(error) throw error;
+
+      // header
+      const svc = cachedServices.find(s => Number(s.service_id) === Number(serviceId));
+      const head = document.getElementById("printHeader");
+      const sidEl = document.getElementById("printServiceId");
+      if(svc){
+        head.textContent = `${svc.internal_code || ""} • ${svc.clients_names || ""} • Entrega: ${svc.estimated_delivery || "-"} • Línea: ${svc.production_line_name || "-"}`;
+      } else {
+        head.textContent = `Servicio ${serviceId}`;
+      }
+      sidEl.textContent = `service_id: ${serviceId}`;
+
+      const tbody = document.getElementById("printTbody");
+      tbody.innerHTML = "";
+
+      for(const r of (data || [])){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="right"><input type="checkbox" /></td>
+          <td>
+            <div style="font-weight:900;">${escapeHtml(r.component_name)}</div>
+          </td>
+          <td class="right nowrap" style="font-weight:900;">${Number(r.qty_to_real||0).toFixed(0)}</td>
+          <td class="mono nowrap">${escapeHtml(r.component_code || "")}</td>
+          <td class="right nowrap">${Number(r.rounding||1).toFixed(0)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById("btnPrint").disabled = false;
+    }
+
+    // ---------- events ----------
+    document.getElementById("btnRefresh").addEventListener("click", async () => {
+      await boot();
+    });
+
+    // Producción filters
+    ["prodLine","prodStatus","prodSearch","prodLimit"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderProductionTable);
+      document.getElementById(id).addEventListener("change", renderProductionTable);
+    });
+
+    // Compras filters
+    ["buyDays","buyLine","buyStatus","buySearch"].forEach(id => {
+      document.getElementById(id).addEventListener("input", refreshPurchases);
+      document.getElementById(id).addEventListener("change", refreshPurchases);
+    });
+
+    // Print
+    document.getElementById("btnLoadChecklist").addEventListener("click", async () => {
+      const sid = document.getElementById("printService").value;
+      if(!sid) return;
+      document.getElementById("btnLoadChecklist").disabled = true;
+      try{
+        await loadChecklistForService(sid);
+      } finally {
+        document.getElementById("btnLoadChecklist").disabled = false;
+      }
+    });
+
+    document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+    // Fullscreen
+    document.getElementById("fsBtn").addEventListener("click", () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    });
+
+    // ---------- boot ----------
+    async function boot(){
+      document.getElementById("btnRefresh").disabled = true;
+      try{
+        // 1) refrescar servicios
+        await refreshServices();
+        // 2) refrescar líneas
+        await refreshLines();
+        // 3) render producción
+        renderProductionTable();
+        // 4) compras
+        await refreshPurchases();
+        // 5) imprimir select
+        populatePrintSelect();
+
+        document.getElementById("lastSync").textContent = new Date().toLocaleTimeString();
+      } catch (e){
+        console.error(e);
+        document.getElementById("lastSync").textContent = "ERROR";
+        alert("Error cargando datos. Revisá consola (F12).");
+      } finally {
+        document.getElementById("btnRefresh").disabled = false;
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
