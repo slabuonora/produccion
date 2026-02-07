@@ -279,7 +279,6 @@
               <label>Línea</label>
               <select id="prodLine">
                 <option value="">Todas</option>
-                <!-- Se llena dinámicamente -->
               </select>
             </div>
 
@@ -462,7 +461,7 @@
         </div>
 
         <div class="span-12 muted" style="font-size:12px;">
-          Nota: “Cant.” ya viene redondeada según la regla de MobCloud (rounding).
+          Nota: “Cant.” es la cantidad real para preparar. Si un ítem viene en pack/caja grande, se muestra “Compra sugerida” debajo.
         </div>
       </div>
     </section>
@@ -478,21 +477,9 @@
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ---------- helpers ----------
     function fmtDate(isoDate){
       if(!isoDate) return "-";
-      // isoDate "YYYY-MM-DD"
       return isoDate;
-    }
-    function fmtTs(ts){
-      if(!ts) return "-";
-      const d = new Date(ts);
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mm = String(d.getMinutes()).padStart(2,'0');
-      const DD = String(d.getDate()).padStart(2,'0');
-      const MM = String(d.getMonth()+1).padStart(2,'0');
-      const YY = d.getFullYear();
-      return `${YY}-${MM}-${DD} ${hh}:${mm}`;
     }
     function escapeHtml(s){
       return String(s ?? "")
@@ -507,7 +494,6 @@
       return new Set(raw);
     }
 
-    // ---------- tabs ----------
     const tabs = document.querySelectorAll(".tab");
     function setTab(name){
       tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
@@ -517,11 +503,9 @@
     }
     tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
 
-    // ---------- data state ----------
-    let cachedServices = [];   // mob_services
-    let cachedLines = [];      // production_line_name distinct
+    let cachedServices = [];
+    let cachedLines = [];
 
-    // ---------- load lines for selects ----------
     async function refreshLines(){
       const { data, error } = await sb
         .from("mob_services")
@@ -541,12 +525,10 @@
       const prodLine = document.getElementById("prodLine");
       const buyLine = document.getElementById("buyLine");
 
-      // limpiar (mantener 'Todas')
       prodLine.innerHTML = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
       buyLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
     }
 
-    // ---------- Producción: traer servicios ----------
     async function refreshServices(){
       const { data, error } = await sb
         .from("mob_services")
@@ -559,9 +541,7 @@
     }
 
     function computeMetrics(services){
-      const today = new Date();
-      const todayYMD = today.toISOString().slice(0,10);
-
+      const todayYMD = new Date().toISOString().slice(0,10);
       let overdue = 0, edge = 0, mach = 0;
       for(const s of services){
         if(s.estimated_delivery && s.estimated_delivery < todayYMD) overdue++;
@@ -630,7 +610,6 @@
       }
     }
 
-    // ---------- Compras: RPC fn_lista_compras_filtrada ----------
     async function refreshPurchases(){
       const days = Number(document.getElementById("buyDays").value || 7);
       const line = document.getElementById("buyLine").value || null;
@@ -671,7 +650,6 @@
       }
     }
 
-    // ---------- Imprimir: cargar servicios y checklist ----------
     function populatePrintSelect(){
       const sel = document.getElementById("printService");
       sel.innerHTML = `<option value="">Seleccionar...</option>` +
@@ -684,14 +662,15 @@
           }).join("");
     }
 
+    // ✅ FIX: usa qty_real como principal y muestra compra sugerida si aplica (rounding grande)
     async function loadChecklistForService(serviceId){
       const { data, error } = await sb.rpc("fn_checklist_herrajes", { p_service_id: Number(serviceId) });
       if(error) throw error;
 
-      // header
       const svc = cachedServices.find(s => Number(s.service_id) === Number(serviceId));
       const head = document.getElementById("printHeader");
       const sidEl = document.getElementById("printServiceId");
+
       if(svc){
         head.textContent = `${svc.internal_code || ""} • ${svc.clients_names || ""} • Entrega: ${svc.estimated_delivery || "-"} • Línea: ${svc.production_line_name || "-"}`;
       } else {
@@ -703,15 +682,21 @@
       tbody.innerHTML = "";
 
       for(const r of (data || [])){
+        const qtyReal = Number(r.qty_real || 0);
+        const rounding = Number(r.rounding || 1);
+        const qtyCompra = Number(r.qty_compra_sugerida || 0);
+        const showCompra = rounding > 1 && qtyCompra > qtyReal;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="right"><input type="checkbox" /></td>
           <td>
-            <div style="font-weight:900;">${escapeHtml(r.component_name)}</div>
+            <div style="font-weight:900;">${escapeHtml(r.component_name || "")}</div>
+            ${showCompra ? `<div class="muted" style="font-size:11px; margin-top:4px;">Compra sugerida: <b>${qtyCompra.toFixed(0)}</b> (pack ${rounding.toFixed(0)})</div>` : ``}
           </td>
-          <td class="right nowrap" style="font-weight:900;">${Number(r.qty_to_real||0).toFixed(0)}</td>
+          <td class="right nowrap" style="font-weight:900;">${qtyReal.toFixed(0)}</td>
           <td class="mono nowrap">${escapeHtml(r.component_code || "")}</td>
-          <td class="right nowrap">${Number(r.rounding||1).toFixed(0)}</td>
+          <td class="right nowrap">${rounding.toFixed(0)}</td>
         `;
         tbody.appendChild(tr);
       }
@@ -719,24 +704,20 @@
       document.getElementById("btnPrint").disabled = false;
     }
 
-    // ---------- events ----------
     document.getElementById("btnRefresh").addEventListener("click", async () => {
       await boot();
     });
 
-    // Producción filters
     ["prodLine","prodStatus","prodSearch","prodLimit"].forEach(id => {
       document.getElementById(id).addEventListener("input", renderProductionTable);
       document.getElementById(id).addEventListener("change", renderProductionTable);
     });
 
-    // Compras filters
     ["buyDays","buyLine","buyStatus","buySearch"].forEach(id => {
       document.getElementById(id).addEventListener("input", refreshPurchases);
       document.getElementById(id).addEventListener("change", refreshPurchases);
     });
 
-    // Print
     document.getElementById("btnLoadChecklist").addEventListener("click", async () => {
       const sid = document.getElementById("printService").value;
       if(!sid) return;
@@ -750,27 +731,14 @@
 
     document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
-    // Fullscreen
-    document.getElementById("fsBtn").addEventListener("click", () => {
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-      else document.exitFullscreen?.();
-    });
-
-    // ---------- boot ----------
     async function boot(){
       document.getElementById("btnRefresh").disabled = true;
       try{
-        // 1) refrescar servicios
         await refreshServices();
-        // 2) refrescar líneas
         await refreshLines();
-        // 3) render producción
         renderProductionTable();
-        // 4) compras
         await refreshPurchases();
-        // 5) imprimir select
         populatePrintSelect();
-
         document.getElementById("lastSync").textContent = new Date().toLocaleTimeString();
       } catch (e){
         console.error(e);
