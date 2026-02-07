@@ -615,7 +615,7 @@
       const line = document.getElementById("buyLine").value || null;
       const status = document.getElementById("buyStatus").value || null;
 
-      const { data, error } = await sb.rpc("fn_lista_compras_filtrada", {
+      const { data, error } = await sb.rpc("fn_lista_compras_operativa", {
         p_days: days,
         p_line_name: (line && line.trim() !== "") ? line : null,
         p_status_list: (status && status.trim() !== "") ? status : null
@@ -753,3 +753,4 @@
   </script>
 </body>
 </html>
+
