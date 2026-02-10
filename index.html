@@ -201,6 +201,10 @@
       table, th, td { border-color:#ddd !important; color:#111 !important; }
       .tag { border-color:#999 !important; color:#111 !important; background:transparent !important; }
       .muted { color:#333 !important; }
+            /* Imprimir solo el tab Packing */
+      main > section { display:none !important; }
+      #tab-packing { display:block !important; }
+
     }
   </style>
 </head>
@@ -1178,6 +1182,29 @@ document.getElementById("packService").addEventListener("change", async () => {
   await loadPackingData(Number(sid));
 });
 
+document.getElementById("btnPackPrint").addEventListener("click", async () => {
+  // Asegura que estemos en la tab Packing y que esté cargada
+  setTab("packing");
+
+  const sid = document.getElementById("packService").value;
+  if (!sid) {
+    alert("Seleccioná un servicio antes de imprimir.");
+    return;
+  }
+
+  // refresca datos por si hubo scans recientes
+  try {
+    await loadPackingData(Number(sid));
+  } catch (e) {
+    console.error(e);
+    alert("No pude refrescar los datos antes de imprimir.");
+    return;
+  }
+
+  window.print();
+});
+
+  
 // Scan con Enter
 document.getElementById("packScan").addEventListener("keydown", async (ev) => {
   if (ev.key !== "Enter") return;
@@ -1230,4 +1257,5 @@ document.getElementById("packScan").addEventListener("keydown", async (ev) => {
 </script>
 </body>
 </html>
+
 
