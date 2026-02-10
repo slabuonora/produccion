@@ -223,6 +223,7 @@
       <div class="tab" data-tab="compras">Compras</div>
       <div class="tab" data-tab="herrajes">Herrajes</div>
       <div class="tab" data-tab="complejidad">Complejidad</div>
+      <div class="tab" data-tab="planvsreal">Plan vs Real</div>
       <div class="tab" data-tab="packing">Pre Packing</div>
     </div>
 
@@ -383,7 +384,7 @@
           <button class="btn" id="btnPrint" disabled>Imprimir</button>
         </div>
         <div class="muted" style="margin-top:10px;">
-          Tip: “Cant.” es para preparar. Si viene en pack, muestra compra sugerida.
+          Tip: "Cant." es para preparar. Si viene en pack, muestra compra sugerida.
         </div>
       </div>
     </div>
@@ -560,6 +561,77 @@
     </div>
   </section>
 
+  <!-- PLAN VS REAL -->
+  <section id="tab-planvsreal" class="card hidden">
+    <div class="k">Plan vs Real • Comparación de tiempos</div>
+
+    <div class="grid no-print">
+      <div class="span-12">
+        <div class="row">
+          <div class="field">
+            <label>Línea</label>
+            <select id="pvrLine"><option value="">Todas</option></select>
+          </div>
+
+          <div class="field">
+            <label>Estados</label>
+            <input id="pvrStatus" value="7,13,17,18,19,21,22"/>
+          </div>
+
+          <div class="field">
+            <label>Ventana (días)</label>
+            <select id="pvrDays">
+              <option value="7" selected>7</option>
+              <option value="14">14</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Mostrar</label>
+            <select id="pvrLimit">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+
+          <button class="btn" id="btnLoadPlanVsReal">Cargar datos</button>
+        </div>
+      </div>
+
+      <div class="span-12">
+        <div class="muted" style="background:rgba(255,204,0,0.08); border:1px solid rgba(255,204,0,0.25); padding:12px; border-radius:10px;">
+          <b>⚠️ NOTA:</b> Los datos "Real" están en desarrollo. Actualmente se muestran placeholders. 
+          La integración completa con eventos de corte requiere mapeo piece_id → service_id (pendiente de implementación).
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="span-12">
+        <table>
+          <thead>
+          <tr>
+            <th>Servicio</th>
+            <th class="nowrap">Línea</th>
+            <th class="nowrap">Entrega</th>
+            <th class="right nowrap">Score</th>
+            <th class="right nowrap">Plan Cut</th>
+            <th class="right nowrap">Plan Edge</th>
+            <th class="right nowrap">Plan Mach</th>
+            <th class="right nowrap">Real Cut</th>
+            <th class="right nowrap">Real Edge</th>
+            <th class="right nowrap">Real Mach</th>
+            <th class="nowrap">Link OK</th>
+          </tr>
+          </thead>
+          <tbody id="pvrTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- PRE PACKING -->
   <section id="tab-packing" class="card hidden">
     <div class="k">Pre Packing • Control por módulo</div>
@@ -657,7 +729,7 @@
 <script>
   // ========= CONFIG =========
   const SUPABASE_URL = "https://qnjizqowddtvzzfillmo.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_Agu_I1nw4mY1qRARQBbaHQ_6lTWsFTh";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFuaml6cW93ZGR0dnp6ZmlsbG1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5MDY2NzUsImV4cCI6MjA4NTQ4MjY3NX0.5P0nSzjO8Y3N-0RFTKcoS5G-ntF0OUixGMOkPqGUHc4";
   // ==========================
 
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -685,6 +757,7 @@
     document.getElementById("tab-compras").classList.toggle("hidden", name!=="compras");
     document.getElementById("tab-herrajes").classList.toggle("hidden", name!=="herrajes");
     document.getElementById("tab-complejidad").classList.toggle("hidden", name!=="complejidad");
+    document.getElementById("tab-planvsreal").classList.toggle("hidden", name!=="planvsreal");
     document.getElementById("tab-packing").classList.toggle("hidden", name!=="packing");
   }
   tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
@@ -696,9 +769,8 @@
     const { data, error } = await sb
       .from("mob_services")
       .select("production_line_name")
-      .not("production_line_name","is",null)
+      .order("production_line_name", { ascending: true })
       .limit(10000);
-
     if(error) throw error;
 
     const lines = Array.from(new Set((data||[]).map(x => x.production_line_name).filter(Boolean)))
@@ -710,10 +782,12 @@
     const prodLine = document.getElementById("prodLine");
     const buyLine  = document.getElementById("buyLine");
     const cxLine   = document.getElementById("cxLine");
+    const pvrLine  = document.getElementById("pvrLine");
 
     prodLine.innerHTML = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
     buyLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
     cxLine.innerHTML   = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+    pvrLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
   }
 
   async function refreshServices(){
@@ -1004,6 +1078,89 @@
     document.getElementById("mCumMach").textContent = num(lastMach,0);
   }
 
+  // ---- Plan vs Real ----
+  async function refreshPlanVsReal(){
+    const line = document.getElementById("pvrLine").value || null;
+    const statusSet = csvToSet(document.getElementById("pvrStatus").value);
+    const days = Number(document.getElementById("pvrDays").value || 7);
+    const limit = Number(document.getElementById("pvrLimit").value || 100);
+
+    // Calcular ventana de fechas
+    const today = new Date();
+    const futureDate = new Date(today);
+    futureDate.setDate(futureDate.getDate() + days);
+    const todayStr = today.toISOString().slice(0,10);
+    const futureStr = futureDate.toISOString().slice(0,10);
+
+    // Cargar complejidad
+    const { data: complexity, error: e1 } = await sb
+      .from("vw_service_complexity")
+      .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery, complexity_score, edged_sides_total, drills_est_total, furrows_total, milling_total")
+      .gte("estimated_delivery", todayStr)
+      .lte("estimated_delivery", futureStr)
+      .order("estimated_delivery", { ascending: true })
+      .limit(1000);
+
+    if(e1) throw e1;
+
+    // Filtrar por línea y estados
+    let filtered = (complexity || []).filter(r => {
+      if(line && r.production_line_name !== line) return false;
+      if(statusSet.size && !statusSet.has(String(r.status))) return false;
+      return true;
+    }).slice(0, limit);
+
+    // Coeficientes (usar los mismos del tab Complejidad)
+    const coefEdge = Number(document.getElementById("coefEdge").value || 0.60);
+    const coefDrill = Number(document.getElementById("coefDrill").value || 0.015);
+    const coefFurrow = Number(document.getElementById("coefFurrow").value || 2.50);
+    const coefMill = Number(document.getElementById("coefMill").value || 1.00);
+
+    // Renderizar tabla
+    const tbody = document.getElementById("pvrTbody");
+    tbody.innerHTML = "";
+
+    for(const r of filtered){
+      // Buscar cutting_times en cachedServices
+      const svc = cachedServices.find(s => Number(s.service_id) === Number(r.service_id));
+      const planCut = svc?.cutting_times ? Number(svc.cutting_times) : 0;
+
+      // Calcular estimaciones edge y mach
+      const edgeSides = Number(r.edged_sides_total || 0);
+      const drills = Number(r.drills_est_total || 0);
+      const furrows = Number(r.furrows_total || 0);
+      const milling = Number(r.milling_total || 0);
+
+      const planEdge = edgeSides * coefEdge;
+      const planMach = (drills * coefDrill) + (furrows * coefFurrow) + (milling * coefMill);
+
+      // Real (placeholders por ahora)
+      const realCut = "-";
+      const realEdge = "-";
+      const realMach = "-";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:900;">${escapeHtml(r.internal_code || "")}</div>
+          <div class="muted">${escapeHtml(r.clients_names || "")}</div>
+          <div class="mono muted">#${r.service_id}</div>
+        </td>
+        <td class="nowrap">${escapeHtml(r.production_line_name || "-")}</td>
+        <td class="nowrap">${fmtDate(r.estimated_delivery)}</td>
+        <td class="right nowrap">${num(r.complexity_score, 1)}</td>
+        <td class="right nowrap">${num(planCut, 0)}</td>
+        <td class="right nowrap">${num(planEdge, 0)}</td>
+        <td class="right nowrap">${num(planMach, 0)}</td>
+        <td class="right nowrap muted">${realCut}</td>
+        <td class="right nowrap muted">${realEdge}</td>
+        <td class="right nowrap muted">${realMach}</td>
+        <td class="nowrap"><span class="tag warn">❌ PEND</span></td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
   // ---- Pre Packing ----
   function populatePackingServiceSelect(){
     const sel = document.getElementById("packService");
@@ -1154,6 +1311,13 @@
     document.getElementById("btnRunSchedule").disabled = true;
     try{ await refreshSchedule(); }
     finally { document.getElementById("btnRunSchedule").disabled = false; }
+  });
+
+  // Plan vs Real
+  document.getElementById("btnLoadPlanVsReal").addEventListener("click", async () => {
+    document.getElementById("btnLoadPlanVsReal").disabled = true;
+    try{ await refreshPlanVsReal(); }
+    finally { document.getElementById("btnLoadPlanVsReal").disabled = false; }
   });
 
   // Pre Packing events
