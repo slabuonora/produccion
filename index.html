@@ -218,6 +218,7 @@
       <div class="tab" data-tab="compras">Compras</div>
       <div class="tab" data-tab="imprimir">Imprimir</div>
       <div class="tab" data-tab="complejidad">Complejidad</div>
+      <div class="tab" data-tab="packing">Packing Ready</div>
     </div>
 
     <div class="pill">SYNC: <span id="lastSync">-</span></div>
@@ -565,6 +566,95 @@
       </div>
     </div>
   </section>
+
+<!-- ===================== -->
+<!-- TAB: COMPLEJIDAD -->
+<!-- ===================== -->
+  <section id="tab-packing" class="card hidden">
+    <div class="k">Packing Ready • Control por módulo</div>
+
+    <div class="grid no-print">
+      <div class="span-12">
+        <div class="row">
+          <div class="field" style="min-width:340px;">
+            <label>Servicio</label>
+            <select id="packService">
+              <option value="">Seleccionar...</option>
+            </select>
+          </div>
+  
+          <div class="field" style="min-width:260px;">
+            <label>Scan piece_id</label>
+            <input id="packScan" placeholder="Escanear y Enter..." />
+          </div>
+  
+          <button class="btn" id="btnPackLoad">Cargar</button>
+          <button class="btn" id="btnPackPrint" disabled>Imprimir remito interno</button>
+  
+          <div class="pill">Progreso: <span id="packProgressLbl">-</span></div>
+        </div>
+        <div class="muted" style="margin-top:8px;">
+          Tip: escaneá el ID de la pieza. Cada scan suma 1 hasta completar la cantidad esperada.
+        </div>
+      </div>
+  
+      <div class="span-12">
+        <div class="metrics">
+          <div class="metric">
+            <div class="m-k">Esperadas</div>
+            <div class="m-v" id="packExpected">-</div>
+            <div class="m-s">piezas (qty)</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Escaneadas</div>
+            <div class="m-v" id="packScanned">-</div>
+            <div class="m-s">packing_ready</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Faltantes</div>
+            <div class="m-v" id="packMissing">-</div>
+            <div class="m-s">alerta si &gt; 0</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Módulos completos</div>
+            <div class="m-v" id="packModulesOk">-</div>
+            <div class="m-s">de <span id="packModulesTotal">-</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="grid">
+      <div class="span-5">
+        <div class="k">Módulos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Módulo</th>
+              <th class="right">OK</th>
+              <th class="right">Faltan</th>
+            </tr>
+          </thead>
+          <tbody id="packModulesTbody"></tbody>
+        </table>
+      </div>
+  
+      <div class="span-7">
+        <div class="k">Piezas</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Pieza</th>
+              <th class="right nowrap">Esc/Exp</th>
+              <th class="right nowrap">Faltan</th>
+            </tr>
+          </thead>
+          <tbody id="packPiecesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+</section>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -600,6 +690,7 @@
     document.getElementById("tab-compras").classList.toggle("hidden", name!=="compras");
     document.getElementById("tab-imprimir").classList.toggle("hidden", name!=="imprimir");
     document.getElementById("tab-complejidad").classList.toggle("hidden", name!=="complejidad");
+    document.getElementById("tab-packing").classList.toggle("hidden", name!=="packing");
   }
   tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
 
@@ -846,6 +937,123 @@
     }
   }
 
+function populatePackingServiceSelect(){
+  const sel = document.getElementById("packService");
+  sel.innerHTML = `<option value="">Seleccionar...</option>` +
+    cachedServices.slice()
+      .sort((a,b)=>String(a.internal_code||"").localeCompare(String(b.internal_code||"")))
+      .map(s => {
+        const label = `${s.internal_code || s.service_id} — ${s.clients_names || ""}`.trim();
+        return `<option value="${s.service_id}">${escapeHtml(label)}</option>`;
+      }).join("");
+}
+
+async function loadPackingData(serviceId){
+  // service progress
+  const { data: svcProg, error: e1 } = await sb
+    .from("vw_packing_service_progress")
+    .select("service_id, expected, scanned, missing, excess, complete")
+    .eq("service_id", serviceId)
+    .maybeSingle();
+
+  if (e1) throw e1;
+
+  // module progress
+  const { data: mods, error: e2 } = await sb
+    .from("vw_packing_module_progress")
+    .select("module_label, expected, scanned, missing, excess, complete")
+    .eq("service_id", serviceId)
+    .order("module_label", { ascending: true });
+
+  if (e2) throw e2;
+
+  // piece progress
+  const { data: pieces, error: e3 } = await sb
+    .from("vw_packing_piece_progress")
+    .select("module_label, piece_id, piece_label, qty_expected, qty_scanned, qty_missing, qty_excess, sequence")
+    .eq("service_id", serviceId)
+    .order("module_label", { ascending: true })
+    .order("sequence", { ascending: true })
+    .order("piece_id", { ascending: true });
+
+  if (e3) throw e3;
+
+  renderPacking(serviceId, svcProg, mods || [], pieces || []);
+}
+
+function renderPacking(serviceId, svcProg, mods, pieces){
+  // KPIs
+  const expected = Number(svcProg?.expected || 0);
+  const scanned = Number(svcProg?.scanned || 0);
+  const missing = Number(svcProg?.missing || 0);
+
+  document.getElementById("packExpected").textContent = expected.toFixed(0);
+  document.getElementById("packScanned").textContent = scanned.toFixed(0);
+  document.getElementById("packMissing").textContent = missing.toFixed(0);
+
+  const okMods = mods.filter(m => m.complete).length;
+  document.getElementById("packModulesOk").textContent = okMods;
+  document.getElementById("packModulesTotal").textContent = mods.length;
+
+  const pct = expected > 0 ? Math.round((scanned/expected)*100) : 0;
+  document.getElementById("packProgressLbl").textContent = `${scanned.toFixed(0)}/${expected.toFixed(0)} (${pct}%)`;
+
+  // botón imprimir habilitado si hay data
+  document.getElementById("btnPackPrint").disabled = (expected === 0);
+
+  // Módulos
+  const mt = document.getElementById("packModulesTbody");
+  mt.innerHTML = "";
+  for(const m of mods){
+    const tag = m.complete ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:900;">${escapeHtml(m.module_label)}</div>
+        <div class="muted" style="font-size:12px;">${tag} • ${Number(m.scanned||0).toFixed(0)}/${Number(m.expected||0).toFixed(0)}</div>
+      </td>
+      <td class="right">${m.complete ? "✅" : "—"}</td>
+      <td class="right">${Number(m.missing||0).toFixed(0)}</td>
+    `;
+    mt.appendChild(tr);
+  }
+
+  // Piezas
+  const pt = document.getElementById("packPiecesTbody");
+  pt.innerHTML = "";
+  for(const p of pieces){
+    const exp = Number(p.qty_expected||0);
+    const sc = Number(p.qty_scanned||0);
+    const mis = Number(p.qty_missing||0);
+    const ok = mis === 0 && exp > 0;
+
+    const status = ok ? `<span class="tag ok">OK</span>` : `<span class="tag bad">FALTA</span>`;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:900;">${escapeHtml(p.module_label)}</div>
+        <div class="muted">${escapeHtml(p.piece_label)}</div>
+        <div class="mono muted">piece_id: ${p.piece_id}</div>
+      </td>
+      <td class="right nowrap">${status} <span class="mono">${sc}/${exp}</span></td>
+      <td class="right nowrap">${mis.toFixed(0)}</td>
+    `;
+    pt.appendChild(tr);
+  }
+}
+
+async function scanPackingPiece(serviceId, pieceId){
+  // Cada scan suma 1
+  const { error } = await sb.rpc("fn_packing_ready_scan", {
+    p_service_id: Number(serviceId),
+    p_piece_id: Number(pieceId),
+    p_qty: 1,
+    p_scanned_by: null
+  });
+  if (error) throw error;
+}
+
+
   async function refreshSchedule(){
     const daysWindow = Number(document.getElementById("cxWindow").value || 14);
     const line = document.getElementById("cxLine").value || null;
@@ -958,6 +1166,41 @@
     }
   });
 
+  document.getElementById("btnPackLoad").addEventListener("click", async () => {
+  const sid = document.getElementById("packService").value;
+  if(!sid) return;
+  await loadPackingData(Number(sid));
+});
+
+document.getElementById("packService").addEventListener("change", async () => {
+  const sid = document.getElementById("packService").value;
+  if(!sid) return;
+  await loadPackingData(Number(sid));
+});
+
+// Scan con Enter
+document.getElementById("packScan").addEventListener("keydown", async (ev) => {
+  if (ev.key !== "Enter") return;
+  const sid = Number(document.getElementById("packService").value);
+  const txt = document.getElementById("packScan").value.trim();
+  if(!sid || !txt) return;
+
+  // piece_id esperado: número
+  const pieceId = Number(txt.replace(/\D/g,''));
+  if(!pieceId) return;
+
+  document.getElementById("packScan").value = "";
+
+  try{
+    await scanPackingPiece(sid, pieceId);
+    await loadPackingData(sid);
+  } catch(e){
+    console.error(e);
+    alert("No pude registrar el scan. Revisá que el piece_id pertenezca al servicio.");
+  }
+});
+
+
   async function boot(){
     document.getElementById("btnRefresh").disabled = true;
     try{
@@ -967,6 +1210,8 @@
       renderProductionTable();
       await refreshPurchases();
       populatePrintSelect();
+      populatePackingServiceSelect();
+
 
       // precarga complejidad ranking
       await refreshComplexityRank();
@@ -985,3 +1230,4 @@
 </script>
 </body>
 </html>
+
