@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Operaciones – MobCloud + Corte (Tabs)</title>
+  <title>Operaciones – MobCloud + Corte</title>
 
   <style>
     :root{
@@ -221,7 +221,7 @@
     <div class="tabs no-print">
       <div class="tab active" data-tab="produccion">Producción</div>
       <div class="tab" data-tab="compras">Compras</div>
-      <div class="tab" data-tab="imprimir">Imprimir</div>
+      <div class="tab" data-tab="herrajes">Herrajes</div>
       <div class="tab" data-tab="complejidad">Complejidad</div>
       <div class="tab" data-tab="packing">Pre Packing</div>
     </div>
@@ -232,7 +232,7 @@
 </header>
 
 <main>
-  <!-- TAB: PRODUCCION -->
+  <!-- PRODUCCIÓN -->
   <section id="tab-produccion" class="card">
     <div class="k">Producción • Backlog</div>
 
@@ -314,9 +314,9 @@
     </div>
   </section>
 
-  <!-- TAB: COMPRAS -->
+  <!-- COMPRAS -->
   <section id="tab-compras" class="card hidden">
-    <div class="k">Compras • Próximos días</div>
+    <div class="k">Compras • Operativa</div>
 
     <div class="grid no-print">
       <div class="span-12">
@@ -367,9 +367,9 @@
     </div>
   </section>
 
-  <!-- TAB: IMPRIMIR -->
-  <section id="tab-imprimir" class="card hidden">
-    <div class="k">Imprimir • Checklist herrajes</div>
+  <!-- HERRAJES -->
+  <section id="tab-herrajes" class="card hidden">
+    <div class="k">Herrajes • Checklist</div>
 
     <div class="grid no-print">
       <div class="span-12">
@@ -382,8 +382,8 @@
           <button class="btn" id="btnLoadChecklist">Cargar checklist</button>
           <button class="btn" id="btnPrint" disabled>Imprimir</button>
         </div>
-        <div class="sub" style="margin-top:10px;">
-          Tip: elegí un servicio y presioná “Cargar checklist”. Luego “Imprimir”.
+        <div class="muted" style="margin-top:10px;">
+          Tip: “Cant.” es para preparar. Si viene en pack, muestra compra sugerida.
         </div>
       </div>
     </div>
@@ -413,34 +413,165 @@
           <tbody id="printTbody"></tbody>
         </table>
       </div>
+    </div>
+  </section>
 
-      <div class="span-12 muted" style="font-size:12px;">
-        Nota: “Cant.” es la cantidad real para preparar. Si un ítem viene en pack/caja grande, se muestra “Compra sugerida”.
+  <!-- COMPLEJIDAD -->
+  <section id="tab-complejidad" class="card hidden">
+    <div class="k">Complejidad & Programación sugerida</div>
+
+    <div class="grid no-print">
+      <div class="span-12">
+        <div class="row">
+          <div class="field">
+            <label>Línea</label>
+            <select id="cxLine"><option value="">Todas</option></select>
+          </div>
+
+          <div class="field">
+            <label>Estados</label>
+            <input id="cxStatus" value="7,13,17,18,19,21,22"/>
+          </div>
+
+          <div class="field">
+            <label>Ventana (días)</label>
+            <select id="cxWindow">
+              <option value="7">7</option>
+              <option value="14" selected>14</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Mostrar</label>
+            <select id="cxLimit">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="span-12">
+        <div class="row">
+          <div class="field">
+            <label>Cap. Corte (min)</label>
+            <input id="capCut" type="number" value="540" />
+          </div>
+          <div class="field">
+            <label>Cap. Enchape (min)</label>
+            <input id="capEdge" type="number" value="540" />
+          </div>
+          <div class="field">
+            <label>Cap. Mecanizado (min)</label>
+            <input id="capMach" type="number" value="540" />
+          </div>
+
+          <div class="field">
+            <label>Coef enchape (min/m)</label>
+            <input id="coefEdge" type="number" step="0.01" value="0.60" />
+          </div>
+          <div class="field">
+            <label>Coef drill (min/hole)</label>
+            <input id="coefDrill" type="number" step="0.001" value="0.015" />
+          </div>
+          <div class="field">
+            <label>Coef ranura (min)</label>
+            <input id="coefFurrow" type="number" step="0.1" value="2.50" />
+          </div>
+          <div class="field">
+            <label>Coef milling (min)</label>
+            <input id="coefMill" type="number" step="0.1" value="1.00" />
+          </div>
+
+          <button class="btn" id="btnRunSchedule">Calcular programación</button>
+        </div>
+      </div>
+
+      <div class="span-12">
+        <div class="metrics">
+          <div class="metric">
+            <div class="m-k">Entran hoy</div>
+            <div class="m-v" id="mFit">-</div>
+            <div class="m-s">within_capacity=true</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Cut acum.</div>
+            <div class="m-v" id="mCumCut">-</div>
+            <div class="m-s">min</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Edge acum.</div>
+            <div class="m-v" id="mCumEdge">-</div>
+            <div class="m-s">min</div>
+          </div>
+          <div class="metric">
+            <div class="m-k">Mach acum.</div>
+            <div class="m-v" id="mCumMach">-</div>
+            <div class="m-s">min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="span-12">
+        <div class="k">Programación sugerida (rank)</div>
+        <table>
+          <thead>
+          <tr>
+            <th class="nowrap">#</th>
+            <th>Servicio</th>
+            <th class="nowrap">Entrega</th>
+            <th class="right nowrap">Score</th>
+            <th class="right nowrap">Cut</th>
+            <th class="right nowrap">Edge</th>
+            <th class="right nowrap">Mach</th>
+            <th class="right nowrap">Σ Cut</th>
+            <th class="right nowrap">Σ Edge</th>
+            <th class="right nowrap">Σ Mach</th>
+            <th class="nowrap">Estado</th>
+          </tr>
+          </thead>
+          <tbody id="cxSchedTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="span-12" style="margin-top:10px;">
+        <div class="k">Ranking complejidad (top)</div>
+        <table>
+          <thead>
+          <tr>
+            <th>Servicio</th>
+            <th class="nowrap">Entrega</th>
+            <th class="right nowrap">Score</th>
+            <th class="right nowrap">Piezas</th>
+            <th class="right nowrap">m²</th>
+            <th class="right nowrap">Cantos</th>
+            <th class="right nowrap">Drills</th>
+            <th class="right nowrap">Ranuras</th>
+          </tr>
+          </thead>
+          <tbody id="cxRankTbody"></tbody>
+        </table>
       </div>
     </div>
   </section>
 
-  <!-- TAB: COMPLEJIDAD -->
-  <section id="tab-complejidad" class="card hidden">
-    <div class="k">Complejidad & Programación sugerida</div>
-    <!-- (sin cambios en este tab respecto a tu versión) -->
-    <!-- ... tu contenido actual de complejidad ... -->
-    <div class="muted">Este tab queda igual a tu versión operativa.</div>
-  </section>
-
-  <!-- TAB: PRE PACKING -->
+  <!-- PRE PACKING -->
   <section id="tab-packing" class="card hidden">
     <div class="k">Pre Packing • Control por módulo</div>
     <div class="muted" id="packPrintHeader" style="margin-bottom:10px;"></div>
 
+    <!-- controles (no print) -->
     <div class="grid no-print">
       <div class="span-12">
         <div class="row">
           <div class="field" style="min-width:340px;">
             <label>Servicio</label>
-            <select id="packService">
-              <option value="">Seleccionar...</option>
-            </select>
+            <select id="packService"><option value="">Seleccionar...</option></select>
           </div>
 
           <div class="field" style="min-width:260px;">
@@ -458,7 +589,10 @@
           Tip: escaneá el ID de la pieza. Cada scan suma 1 hasta completar la cantidad esperada.
         </div>
       </div>
+    </div>
 
+    <!-- KPIs (SIEMPRE visibles, también en impresión) -->
+    <div class="grid">
       <div class="span-12">
         <div class="metrics">
           <div class="metric">
@@ -485,6 +619,7 @@
       </div>
     </div>
 
+    <!-- tablas -->
     <div class="grid">
       <div class="span-5">
         <div class="k">Módulos</div>
@@ -515,7 +650,6 @@
       </div>
     </div>
   </section>
-
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -538,6 +672,10 @@
     const raw = (csv||"").split(",").map(x=>x.trim()).filter(Boolean);
     return new Set(raw);
   }
+  function num(n, d=0){
+    const v = Number(n ?? 0);
+    return isFinite(v) ? v.toFixed(d) : "-";
+  }
 
   // Tabs
   const tabs = document.querySelectorAll(".tab");
@@ -545,24 +683,328 @@
     tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
     document.getElementById("tab-produccion").classList.toggle("hidden", name!=="produccion");
     document.getElementById("tab-compras").classList.toggle("hidden", name!=="compras");
-    document.getElementById("tab-imprimir").classList.toggle("hidden", name!=="imprimir");
+    document.getElementById("tab-herrajes").classList.toggle("hidden", name!=="herrajes");
     document.getElementById("tab-complejidad").classList.toggle("hidden", name!=="complejidad");
     document.getElementById("tab-packing").classList.toggle("hidden", name!=="packing");
   }
   tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
 
   let cachedServices = [];
+  let cachedLines = [];
+
+  async function refreshLines(){
+    const { data, error } = await sb
+      .from("mob_services")
+      .select("production_line_name")
+      .not("production_line_name","is",null)
+      .limit(10000);
+
+    if(error) throw error;
+
+    const lines = Array.from(new Set((data||[]).map(x => x.production_line_name).filter(Boolean)))
+      .sort((a,b)=>a.localeCompare(b));
+
+    cachedLines = lines;
+
+    // set lines into selects
+    const prodLine = document.getElementById("prodLine");
+    const buyLine  = document.getElementById("buyLine");
+    const cxLine   = document.getElementById("cxLine");
+
+    prodLine.innerHTML = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+    buyLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+    cxLine.innerHTML   = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
+  }
 
   async function refreshServices(){
     const { data, error } = await sb
       .from("mob_services")
-      .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery")
+      .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery, step_cut_at, step_edge_at, step_machining_at, step_packing_at, edge_used, machining_used, packing_allowed, cutting_times")
       .order("estimated_delivery", { ascending: true, nullsFirst: false })
       .limit(10000);
     if(error) throw error;
     cachedServices = data || [];
   }
 
+  // ---- Producción ----
+  function computeMetrics(services){
+    const todayYMD = new Date().toISOString().slice(0,10);
+    let overdue = 0, edge = 0, mach = 0;
+    for(const s of services){
+      if(s.estimated_delivery && s.estimated_delivery < todayYMD) overdue++;
+      if(Number(s.edge_used||0) === 1) edge++;
+      if(Number(s.machining_used||0) === 1) mach++;
+    }
+    document.getElementById("mServices").textContent = services.length;
+    document.getElementById("mOverdue").textContent = overdue;
+    document.getElementById("mEdge").textContent = edge;
+    document.getElementById("mMach").textContent = mach;
+  }
+
+  function renderProductionTable(){
+    const line = document.getElementById("prodLine").value;
+    const statusSet = csvToSet(document.getElementById("prodStatus").value);
+    const search = document.getElementById("prodSearch").value.trim().toLowerCase();
+    const limit = Number(document.getElementById("prodLimit").value || 100);
+
+    let filtered = cachedServices.filter(s => {
+      if(line && s.production_line_name !== line) return false;
+      if(statusSet.size && !statusSet.has(String(s.status))) return false;
+      if(search){
+        const a = (s.internal_code||"").toLowerCase();
+        const b = (s.clients_names||"").toLowerCase();
+        if(!a.includes(search) && !b.includes(search)) return false;
+      }
+      return true;
+    }).slice(0, limit);
+
+    computeMetrics(filtered);
+
+    const tbody = document.getElementById("prodTbody");
+    tbody.innerHTML = "";
+
+    for(const s of filtered){
+      const cut = s.step_cut_at ? `<span class="tag ok">OK</span>` : `<span class="tag bad">PEND</span>`;
+      const edge = (Number(s.edge_used||0)===1)
+        ? (s.step_edge_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+        : `<span class="tag">N/A</span>`;
+      const mach = (Number(s.machining_used||0)===1)
+        ? (s.step_machining_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+        : `<span class="tag">N/A</span>`;
+      const pack = (Number(s.packing_allowed||0)===1)
+        ? (s.step_packing_at ? `<span class="tag ok">OK</span>` : `<span class="tag warn">PEND</span>`)
+        : `<span class="tag">N/A</span>`;
+
+      const code = escapeHtml(s.internal_code || "");
+      const client = escapeHtml(s.clients_names || "");
+      const lineName = escapeHtml(s.production_line_name || "-");
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="nowrap">${fmtDate(s.estimated_delivery)}</td>
+        <td><div style="font-weight:900;">${code}</div><div class="muted">${client}</div><div class="mono muted">#${s.service_id}</div></td>
+        <td>${lineName}</td>
+        <td class="nowrap">${s.status ?? "-"}</td>
+        <td class="nowrap">${cut}</td>
+        <td class="nowrap">${edge}</td>
+        <td class="nowrap">${mach}</td>
+        <td class="nowrap">${pack}</td>
+        <td class="right nowrap">${s.cutting_times ?? "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ---- Compras (operativa) ----
+  async function refreshPurchases(){
+    const days = Number(document.getElementById("buyDays").value || 7);
+    const line = document.getElementById("buyLine").value || null;
+    const status = document.getElementById("buyStatus").value || null;
+
+    const { data, error } = await sb.rpc("fn_lista_compras_operativa", {
+      p_days: days,
+      p_line_name: (line && line.trim() !== "") ? line : null,
+      p_status_list: (status && status.trim() !== "") ? status : null
+    });
+    if(error) throw error;
+
+    const search = document.getElementById("buySearch").value.trim().toLowerCase();
+    let rows = (data || []);
+    if(search){
+      rows = rows.filter(r =>
+        String(r.category||"").toLowerCase().includes(search)
+        || String(r.item_key||"").toLowerCase().includes(search)
+        || String(r.description||"").toLowerCase().includes(search)
+      );
+    }
+
+    const tbody = document.getElementById("buyTbody");
+    tbody.innerHTML = "";
+
+    for(const r of rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="nowrap"><span class="tag">${escapeHtml(r.category)}</span></td>
+        <td class="mono nowrap">${escapeHtml(r.item_key)}</td>
+        <td>${escapeHtml(r.description)}</td>
+        <td class="right nowrap">${Number(r.qty||0).toFixed(2).replace(/\.00$/,'')}</td>
+        <td class="nowrap">${escapeHtml(r.unit)}</td>
+        <td class="right nowrap">${Number(r.cost_estimated||0).toFixed(2)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ---- Herrajes ----
+  function populateHerrajesSelect(){
+    const sel = document.getElementById("printService");
+    sel.innerHTML = `<option value="">Seleccionar...</option>` +
+      cachedServices.slice()
+        .sort((a,b)=>String(a.internal_code||"").localeCompare(String(b.internal_code||"")))
+        .map(s => {
+          const label = `${s.internal_code || s.service_id} — ${s.clients_names || ""}`.trim();
+          return `<option value="${s.service_id}">${escapeHtml(label)}</option>`;
+        }).join("");
+  }
+
+  async function loadChecklistForService(serviceId){
+    const { data, error } = await sb.rpc("fn_checklist_herrajes", { p_service_id: Number(serviceId) });
+    if(error) throw error;
+
+    const svc = cachedServices.find(s => Number(s.service_id) === Number(serviceId));
+    const head = document.getElementById("printHeader");
+    const sidEl = document.getElementById("printServiceId");
+
+    if(svc){
+      head.textContent = `${svc.internal_code || ""} • ${svc.clients_names || ""} • Entrega: ${svc.estimated_delivery || "-"} • Línea: ${svc.production_line_name || "-"}`;
+    } else {
+      head.textContent = `Servicio ${serviceId}`;
+    }
+    sidEl.textContent = `service_id: ${serviceId}`;
+
+    const tbody = document.getElementById("printTbody");
+    tbody.innerHTML = "";
+
+    for(const r of (data || [])){
+      const qtyReal = Number(r.qty_real || 0);
+      const rounding = Number(r.rounding || 1);
+      const qtyCompra = Number(r.qty_compra_sugerida || 0);
+      const showCompra = rounding > 1 && qtyCompra > qtyReal;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="right"><input type="checkbox" /></td>
+        <td>
+          <div style="font-weight:900;">${escapeHtml(r.component_name || "")}</div>
+          ${showCompra ? `<div class="muted" style="font-size:11px; margin-top:4px;">Compra sugerida: <b>${qtyCompra.toFixed(0)}</b> (pack ${rounding.toFixed(0)})</div>` : ``}
+        </td>
+        <td class="right nowrap" style="font-weight:900;">${qtyReal.toFixed(0)}</td>
+        <td class="mono nowrap">${escapeHtml(r.component_code || "")}</td>
+        <td class="right nowrap">${rounding.toFixed(0)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById("btnPrint").disabled = false;
+  }
+
+  // ---- Complejidad ----
+  async function refreshComplexityRank(){
+    const line = document.getElementById("cxLine").value || null;
+    const statusSet = csvToSet(document.getElementById("cxStatus").value);
+    const limit = Number(document.getElementById("cxLimit").value || 100);
+
+    const { data, error } = await sb
+      .from("vw_service_complexity")
+      .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery, complexity_score, pieces_total, area_m2, edged_sides_total, drills_est_total, furrows_total")
+      .order("complexity_score", { ascending:false })
+      .limit(1000);
+
+    if(error) throw error;
+
+    let rows = (data || []).filter(r => {
+      if(line && r.production_line_name !== line) return false;
+      if(statusSet.size && !statusSet.has(String(r.status))) return false;
+      return true;
+    }).slice(0, limit);
+
+    const tbody = document.getElementById("cxRankTbody");
+    tbody.innerHTML = "";
+
+    for(const r of rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:900;">${escapeHtml(r.internal_code || "")}</div>
+          <div class="muted">${escapeHtml(r.clients_names || "")}</div>
+          <div class="mono muted">#${r.service_id}</div>
+        </td>
+        <td class="nowrap">${fmtDate(r.estimated_delivery)}</td>
+        <td class="right nowrap">${num(r.complexity_score,1)}</td>
+        <td class="right nowrap">${num(r.pieces_total,0)}</td>
+        <td class="right nowrap">${num(r.area_m2,2)}</td>
+        <td class="right nowrap">${num(r.edged_sides_total,0)}</td>
+        <td class="right nowrap">${num(r.drills_est_total,0)}</td>
+        <td class="right nowrap">${num(r.furrows_total,0)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function refreshSchedule(){
+    const daysWindow = Number(document.getElementById("cxWindow").value || 14);
+    const line = document.getElementById("cxLine").value || null;
+    const status = document.getElementById("cxStatus").value || null;
+
+    const capCut = Number(document.getElementById("capCut").value || 540);
+    const capEdge = Number(document.getElementById("capEdge").value || 540);
+    const capMach = Number(document.getElementById("capMach").value || 540);
+
+    const coefEdge = Number(document.getElementById("coefEdge").value || 0.60);
+    const coefDrill = Number(document.getElementById("coefDrill").value || 0.015);
+    const coefFurrow = Number(document.getElementById("coefFurrow").value || 2.50);
+    const coefMill = Number(document.getElementById("coefMill").value || 1.00);
+
+    const { data, error } = await sb.rpc("fn_daily_schedule_suggested", {
+      p_days_window: daysWindow,
+      p_line_name: (line && line.trim() !== "") ? line : null,
+      p_status_list: (status && status.trim() !== "") ? status : null,
+      p_cap_cut_min: capCut,
+      p_cap_edge_min: capEdge,
+      p_cap_mach_min: capMach,
+      p_edge_min_per_meter: coefEdge,
+      p_drill_min_per_hole: coefDrill,
+      p_furrow_min_each: coefFurrow,
+      p_milling_min_each: coefMill
+    });
+
+    if(error) throw error;
+
+    const rows = data || [];
+    const tbody = document.getElementById("cxSchedTbody");
+    tbody.innerHTML = "";
+
+    let fit = 0;
+    let lastCut = 0, lastEdge = 0, lastMach = 0;
+
+    for(const r of rows){
+      if(r.within_capacity) {
+        fit++;
+        lastCut = Number(r.cum_cut_min||0);
+        lastEdge = Number(r.cum_edge_min||0);
+        lastMach = Number(r.cum_mach_min||0);
+      }
+
+      const tag = r.within_capacity ? `<span class="tag ok">ENTRA</span>` : `<span class="tag bad">FUERA</span>`;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="nowrap">${r.rank}</td>
+        <td>
+          <div style="font-weight:900;">${escapeHtml(r.internal_code || "")}</div>
+          <div class="muted">${escapeHtml(r.clients_names || "")}</div>
+          <div class="mono muted">#${r.service_id}</div>
+        </td>
+        <td class="nowrap">${fmtDate(r.estimated_delivery)}</td>
+        <td class="right nowrap">${num(r.complexity_score,1)}</td>
+        <td class="right nowrap">${num(r.cut_plan_min,1)}</td>
+        <td class="right nowrap">${num(r.edge_est_min,1)}</td>
+        <td class="right nowrap">${num(r.mach_est_min,1)}</td>
+        <td class="right nowrap">${num(r.cum_cut_min,1)}</td>
+        <td class="right nowrap">${num(r.cum_edge_min,1)}</td>
+        <td class="right nowrap">${num(r.cum_mach_min,1)}</td>
+        <td class="nowrap">${tag}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById("mFit").textContent = fit;
+    document.getElementById("mCumCut").textContent = num(lastCut,0);
+    document.getElementById("mCumEdge").textContent = num(lastEdge,0);
+    document.getElementById("mCumMach").textContent = num(lastMach,0);
+  }
+
+  // ---- Pre Packing ----
   function populatePackingServiceSelect(){
     const sel = document.getElementById("packService");
     sel.innerHTML = `<option value="">Seleccionar...</option>` +
@@ -617,22 +1059,17 @@
     const pct = expected > 0 ? Math.round((scanned/expected)*100) : 0;
     document.getElementById("packProgressLbl").textContent = `${scanned.toFixed(0)}/${expected.toFixed(0)} (${pct}%)`;
 
-    // habilitar botones
     document.getElementById("btnPackPrint").disabled = (expected === 0);
-    document.getElementById("btnPackReset").disabled = (serviceId ? false : true);
-    document.getElementById("btnPackUndo").disabled = (serviceId ? false : true);
+    document.getElementById("btnPackReset").disabled = (!serviceId);
+    document.getElementById("btnPackUndo").disabled = (!serviceId);
 
-    // Header impresión con resumen + módulos completos
     const svc = cachedServices.find(s => Number(s.service_id) === Number(serviceId));
     const nowStr = new Date().toLocaleString();
     const name = svc?.internal_code ? svc.internal_code : `SERVICE_${serviceId}`;
     const client = svc?.clients_names ? ` • ${svc.clients_names}` : "";
-    const hdr = document.getElementById("packPrintHeader");
-    if (hdr) {
-      hdr.textContent = `${name}${client} • REMITO INTERNO • ${nowStr} • Piezas: ${scanned}/${expected} • Faltan: ${missing} • Módulos completos: ${okMods}/${mods.length}`;
-    }
+    document.getElementById("packPrintHeader").textContent =
+      `${name}${client} • REMITO INTERNO • ${nowStr} • Piezas: ${scanned}/${expected} • Faltan: ${missing} • Módulos completos: ${okMods}/${mods.length}`;
 
-    // Módulos
     const mt = document.getElementById("packModulesTbody");
     mt.innerHTML = "";
     for(const m of mods){
@@ -649,7 +1086,6 @@
       mt.appendChild(tr);
     }
 
-    // Piezas
     const pt = document.getElementById("packPiecesTbody");
     pt.innerHTML = "";
     for(const p of pieces){
@@ -687,14 +1123,46 @@
     if (error) throw error;
   }
 
-  // --- Eventos Pre Packing ---
+  // Wiring
+  document.getElementById("btnRefresh").addEventListener("click", async () => boot());
+
+  ["prodLine","prodStatus","prodSearch","prodLimit"].forEach(id => {
+    document.getElementById(id).addEventListener("input", renderProductionTable);
+    document.getElementById(id).addEventListener("change", renderProductionTable);
+  });
+
+  ["buyDays","buyLine","buyStatus","buySearch"].forEach(id => {
+    document.getElementById(id).addEventListener("input", refreshPurchases);
+    document.getElementById(id).addEventListener("change", refreshPurchases);
+  });
+
+  document.getElementById("btnLoadChecklist").addEventListener("click", async () => {
+    const sid = document.getElementById("printService").value;
+    if(!sid) return;
+    document.getElementById("btnLoadChecklist").disabled = true;
+    try{ await loadChecklistForService(sid); }
+    finally { document.getElementById("btnLoadChecklist").disabled = false; }
+  });
+
+  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+  ["cxLine","cxStatus","cxWindow","cxLimit"].forEach(id => {
+    document.getElementById(id).addEventListener("change", async () => refreshComplexityRank());
+  });
+
+  document.getElementById("btnRunSchedule").addEventListener("click", async () => {
+    document.getElementById("btnRunSchedule").disabled = true;
+    try{ await refreshSchedule(); }
+    finally { document.getElementById("btnRunSchedule").disabled = false; }
+  });
+
+  // Pre Packing events
   document.getElementById("packService").addEventListener("change", async () => {
     const sid = Number(document.getElementById("packService").value);
     if(!sid) return;
     await loadPackingData(sid);
   });
 
-  // Scan con Enter
   document.getElementById("packScan").addEventListener("keydown", async (ev) => {
     if (ev.key !== "Enter") return;
 
@@ -716,7 +1184,6 @@
     }
   });
 
-  // Reset
   document.getElementById("btnPackReset").addEventListener("click", async () => {
     const sid = Number(document.getElementById("packService").value);
     if(!sid) return;
@@ -724,22 +1191,18 @@
 
     const { error } = await sb.rpc("fn_packing_ready_reset", { p_service_id: sid });
     if (error) { alert("No pude resetear."); console.error(error); return; }
-
     await loadPackingData(sid);
   });
 
-  // Undo último
   document.getElementById("btnPackUndo").addEventListener("click", async () => {
     const sid = Number(document.getElementById("packService").value);
     if(!sid) return;
 
     const { error } = await sb.rpc("fn_packing_ready_undo", { p_service_id: sid });
     if (error) { alert("No pude deshacer."); console.error(error); return; }
-
     await loadPackingData(sid);
   });
 
-  // Imprimir remito interno (con nombre sugerido)
   document.getElementById("btnPackPrint").addEventListener("click", async () => {
     setTab("packing");
     const sid = Number(document.getElementById("packService").value);
@@ -757,14 +1220,25 @@
   });
 
   async function boot(){
+    document.getElementById("btnRefresh").disabled = true;
     try{
       await refreshServices();
+      await refreshLines();
+      renderProductionTable();
+      await refreshPurchases();
+
+      populateHerrajesSelect();
       populatePackingServiceSelect();
+
+      await refreshComplexityRank();
+
       document.getElementById("lastSync").textContent = new Date().toLocaleTimeString();
     } catch (e){
       console.error(e);
       document.getElementById("lastSync").textContent = "ERROR";
       alert("Error cargando datos. Revisá consola (F12).");
+    } finally {
+      document.getElementById("btnRefresh").disabled = false;
     }
   }
 
