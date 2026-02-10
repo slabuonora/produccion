@@ -572,10 +572,12 @@
   </section>
 
 <!-- ===================== -->
-<!-- TAB: COMPLEJIDAD -->
+<!-- TAB: PRE PACKING -->
 <!-- ===================== -->
   <section id="tab-packing" class="card hidden">
     <div class="k">Packing Ready • Control por módulo</div>
+    <div class="muted" id="packPrintHeader" style="margin-bottom:10px;"></div>
+
 
     <div class="grid no-print">
       <div class="span-12">
@@ -1020,6 +1022,16 @@ function renderPacking(serviceId, svcProg, mods, pieces){
       <td class="right">${Number(m.missing||0).toFixed(0)}</td>
     `;
     mt.appendChild(tr);
+
+    const svc = cachedServices.find(s => Number(s.service_id) === Number(serviceId));
+    const hdr = document.getElementById("packPrintHeader");
+    if (hdr) {
+      const now = new Date().toLocaleString();
+      hdr.textContent = svc
+        ? `Remito interno • ${svc.internal_code || ""} • ${svc.clients_names || ""} • ${now}`
+        : `Remito interno • service_id ${serviceId} • ${now}`;
+    }
+
   }
 
   // Piezas
@@ -1257,5 +1269,6 @@ document.getElementById("packScan").addEventListener("keydown", async (ev) => {
 </script>
 </body>
 </html>
+
 
 
