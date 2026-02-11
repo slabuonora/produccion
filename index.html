@@ -223,7 +223,6 @@
       <div class="tab" data-tab="compras">Compras</div>
       <div class="tab" data-tab="herrajes">Herrajes</div>
       <div class="tab" data-tab="complejidad">Complejidad</div>
-      <div class="tab" data-tab="planvsreal">Plan vs Real</div>
       <div class="tab" data-tab="packing">Pre Packing</div>
     </div>
 
@@ -315,58 +314,706 @@
     </div>
   </section>
 
-  <!-- COMPRAS -->
-  <section id="tab-compras" class="card hidden">
-    <div class="k">Compras • Operativa</div>
+  <!-- COMPRAS HÍBRIDO -->
+<section id="tab-compras" class="card hidden">
+  <div class="k">Compras • Operativa</div>
 
+  <!-- Header con toggle de vistas -->
+  <div class="header-controls" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+    <div class="view-toggle" style="display:flex; gap:6px; background:rgba(255,255,255,0.03); padding:4px; border-radius:10px; border:1px solid var(--border);">
+      <button class="view-btn active" data-view="list" onclick="switchBuyView('list')" style="padding:10px 18px; border:none; background:transparent; color:var(--muted); border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s ease; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">📋</span>
+        <span>Lista con Checklist</span>
+      </button>
+      <button class="view-btn" data-view="dashboard" onclick="switchBuyView('dashboard')" style="padding:10px 18px; border:none; background:transparent; color:var(--muted); border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; transition:all 0.2s ease; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">📊</span>
+        <span>Dashboard</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="grid no-print">
+    <div class="span-12">
+      <div class="row">
+        <div class="field">
+          <label>Próximos días</label>
+          <select id="buyDays">
+            <option value="7" selected>7</option>
+            <option value="14">14</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Línea</label>
+          <select id="buyLine"><option value="">Todas</option></select>
+        </div>
+
+        <div class="field">
+          <label>Estados</label>
+          <input id="buyStatus" value="7,13,17,18,19,21,22"/>
+        </div>
+
+        <div class="field">
+          <label>Buscar item</label>
+          <input id="buySearch" placeholder="tabl/058 / parana / tornillo..." />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chips de categoría -->
+  <div class="category-chips no-print" id="buyCategoryChips" style="display:flex; gap:8px; overflow-x:auto; padding:12px 0; margin-bottom:16px; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+    <!-- Generado dinámicamente -->
+  </div>
+
+  <!-- KPIs superiores -->
+  <div class="grid no-print">
+    <div class="span-3">
+      <div class="metric" style="background:linear-gradient(135deg, rgba(0,242,255,0.1) 0%, rgba(0,242,255,0.05) 100%); border:1px solid rgba(0,242,255,0.3);">
+        <div class="m-k">Costo Total</div>
+        <div class="m-v" id="buyTotalCost">$0</div>
+        <div class="m-s">estimado</div>
+      </div>
+    </div>
+    <div class="span-3">
+      <div class="metric">
+        <div class="m-k">Items Únicos</div>
+        <div class="m-v" id="buyTotalItems">0</div>
+        <div class="m-s">productos</div>
+      </div>
+    </div>
+    <div class="span-3">
+      <div class="metric">
+        <div class="m-k">Categorías</div>
+        <div class="m-v" id="buyTotalCategories">0</div>
+        <div class="m-s">grupos</div>
+      </div>
+    </div>
+    <div class="span-3">
+      <div class="metric">
+        <div class="m-k">Progreso</div>
+        <div class="m-v" id="buyCheckedPercent">0%</div>
+        <div class="m-s"><span id="buyCheckedCount">0</span> de <span id="buyTotalCount">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA LISTA -->
+  <div id="buyListView">
     <div class="grid no-print">
       <div class="span-12">
-        <div class="row">
-          <div class="field">
-            <label>Próximos días</label>
-            <select id="buyDays">
-              <option value="7" selected>7</option>
-              <option value="14">14</option>
-              <option value="30">30</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>Línea</label>
-            <select id="buyLine"><option value="">Todas</option></select>
-          </div>
-
-          <div class="field">
-            <label>Estados</label>
-            <input id="buyStatus" value="7,13,17,18,19,21,22"/>
-          </div>
-
-          <div class="field">
-            <label>Buscar item</label>
-            <input id="buySearch" placeholder="tabl/058 / parana / tornillo..." />
-          </div>
+        <div class="row" style="gap:10px;">
+          <button class="btn" onclick="buyExpandAll()">Expandir todo</button>
+          <button class="btn" onclick="buyCollapseAll()">Colapsar todo</button>
+          <button class="btn" onclick="buyUncheckAll()">Desmarcar todo</button>
+          <button class="btn" style="background:linear-gradient(135deg, #00f2ff 0%, #00b8d4 100%); border-color:#00f2ff; color:#000; font-weight:800;" onclick="window.print()">📄 Imprimir</button>
         </div>
       </div>
     </div>
 
     <div class="grid">
+      <div class="span-12" id="buyListContainer">
+        <!-- Generado dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA DASHBOARD -->
+  <div id="buyDashboardView" style="display:none;">
+    <div class="grid">
+      <!-- Gráfico de dona -->
+      <div class="span-7">
+        <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; min-height:350px;">
+          <div class="k">Distribución de Costos por Categoría</div>
+          <canvas id="buyCategoryChart" style="max-height:300px;"></canvas>
+        </div>
+      </div>
+
+      <!-- Top 5 items -->
+      <div class="span-5">
+        <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; min-height:350px;">
+          <div class="k">Top 5 Items Más Costosos</div>
+          <div id="buyTopItems" style="display:grid; gap:10px;">
+            <!-- Generado dinámicamente -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico de barras -->
       <div class="span-12">
+        <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; min-height:300px;">
+          <div class="k">Análisis de Cantidades por Categoría</div>
+          <canvas id="buyQuantityChart" style="max-height:280px;"></canvas>
+        </div>
+      </div>
+
+      <!-- Tabla resumen -->
+      <div class="span-12">
+        <div class="k">Resumen por Categoría</div>
         <table>
           <thead>
-          <tr>
-            <th>Categoría</th>
-            <th>Item</th>
-            <th>Descripción</th>
-            <th class="right">Cantidad</th>
-            <th>Unidad</th>
-            <th class="right">Costo est.</th>
-          </tr>
+            <tr>
+              <th>Categoría</th>
+              <th class="right">Items</th>
+              <th class="right">Costo Total</th>
+              <th class="right">% del Total</th>
+            </tr>
           </thead>
-          <tbody id="buyTbody"></tbody>
+          <tbody id="buySummaryTable">
+            <!-- Generado dinámicamente -->
+          </tbody>
         </table>
       </div>
     </div>
-  </section>
+  </div>
+</section>
+
+<style>
+/* Estilos específicos para Compras Híbrido */
+.view-btn:hover { background:rgba(255,255,255,0.05); }
+.view-btn.active {
+  background:linear-gradient(135deg, #00f2ff 0%, #00b8d4 100%);
+  color:#000;
+  box-shadow:0 2px 8px rgba(0,242,255,0.3);
+}
+
+.category-chips::-webkit-scrollbar { height:6px; }
+.category-chips::-webkit-scrollbar-track { background:rgba(255,255,255,0.02); border-radius:3px; }
+.category-chips::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+
+.buy-chip {
+  padding:8px 16px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.02);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all 0.2s ease;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.buy-chip:hover { background:rgba(255,255,255,0.05); border-color:rgba(0,242,255,0.3); }
+.buy-chip.active {
+  background:linear-gradient(135deg, rgba(0,242,255,0.2) 0%, rgba(0,242,255,0.1) 100%);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+
+.buy-category-section { margin-bottom:20px; }
+
+.buy-category-header {
+  background:linear-gradient(135deg, rgba(0,242,255,0.1) 0%, rgba(0,242,255,0.05) 100%);
+  border:1px solid rgba(0,242,255,0.3);
+  border-radius:12px;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  margin-bottom:10px;
+}
+.buy-category-header:hover {
+  background:linear-gradient(135deg, rgba(0,242,255,0.15) 0%, rgba(0,242,255,0.08) 100%);
+  border-color:rgba(0,242,255,0.5);
+}
+.buy-category-header.collapsed { opacity:0.7; }
+
+.buy-category-title { display:flex; align-items:center; gap:12px; }
+.buy-category-icon { font-size:24px; }
+.buy-category-name { font-size:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.05em; }
+
+.buy-category-stats { display:flex; align-items:center; gap:16px; font-size:13px; }
+.buy-category-count { background:rgba(0,242,255,0.15); padding:4px 10px; border-radius:8px; font-weight:800; }
+.buy-category-total { font-weight:900; color:var(--accent); }
+
+.buy-category-toggle { font-size:20px; transition:transform 0.3s ease; }
+.buy-category-toggle.collapsed { transform:rotate(-90deg); }
+
+.buy-category-items {
+  border-left:2px solid rgba(0,242,255,0.2);
+  margin-left:20px;
+  padding-left:0;
+  max-height:2000px;
+  overflow:hidden;
+  transition:max-height 0.3s ease;
+}
+.buy-category-items.collapsed { max-height:0; }
+
+.buy-item-card {
+  background:rgba(255,255,255,0.02);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  margin-bottom:8px;
+  display:grid;
+  grid-template-columns:40px 1fr auto;
+  gap:12px;
+  align-items:center;
+  transition:all 0.2s ease;
+}
+.buy-item-card:hover { background:rgba(255,255,255,0.04); border-color:rgba(0,242,255,0.3); }
+.buy-item-card.checked { opacity:0.5; background:rgba(0,255,136,0.05); }
+
+.buy-item-checkbox { width:24px; height:24px; cursor:pointer; accent-color:var(--success); }
+
+.buy-item-info { display:flex; flex-direction:column; gap:4px; }
+.buy-item-key { font-family:ui-monospace, monospace; font-size:13px; color:var(--accent); font-weight:700; }
+.buy-item-desc { font-size:13px; color:var(--txt); }
+
+.buy-item-details { text-align:right; }
+.buy-item-qty { font-size:18px; font-weight:900; margin-bottom:2px; }
+.buy-item-unit { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.buy-item-cost { font-size:12px; color:var(--muted); font-weight:700; }
+
+.buy-top-item {
+  background:rgba(255,255,255,0.02);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  transition:all 0.2s ease;
+}
+.buy-top-item:hover { background:rgba(255,255,255,0.04); border-color:rgba(0,242,255,0.3); }
+
+.buy-top-rank {
+  width:32px;
+  height:32px;
+  background:linear-gradient(135deg, rgba(0,242,255,0.2) 0%, rgba(0,242,255,0.1) 100%);
+  border:1px solid rgba(0,242,255,0.4);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:14px;
+  color:var(--accent);
+}
+
+.buy-top-info { flex:1; margin-left:14px; }
+.buy-top-name { font-weight:800; font-size:13px; margin-bottom:2px; }
+.buy-top-desc { font-size:11px; color:var(--muted); }
+.buy-top-cost { font-size:18px; font-weight:900; color:var(--accent); }
+
+@media print {
+  .view-toggle, .category-chips, .btn { display:none !important; }
+  .buy-item-checkbox { opacity:0.3; }
+  #buyDashboardView { display:none !important; }
+  #buyListView { display:block !important; }
+}
+</style>
+
+<script>
+// Variables globales para Compras
+let buyRawData = [];
+let buyGroupedData = {};
+let buyCheckedItems = new Set();
+let buyCurrentFilter = '';
+let buyCurrentView = 'list';
+let buyCategoryChart, buyQuantityChart;
+
+const buyCategoryIcons = {
+  "TABLEROS": "🪵", "CANTOS": "📏", "HERRAJES": "🔧", "TORNILLOS": "🔩",
+  "ADHESIVOS": "🧴", "ABRASIVOS": "🔨", "EMBALAJE": "📦", "VARIOS": "🛠️",
+  "MELAMINAS": "🎨", "MADERAS": "🌳", "ACCESORIOS": "⚙️", "VIDRIOS": "💎"
+};
+
+function switchBuyView(view) {
+  buyCurrentView = view;
+  
+  // Toggle buttons
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  
+  // Toggle views
+  document.getElementById('buyListView').style.display = view === 'list' ? 'block' : 'none';
+  document.getElementById('buyDashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
+  
+  // Si cambiamos a dashboard, actualizar gráficos
+  if (view === 'dashboard') {
+    setTimeout(() => buyRenderDashboard(), 100);
+  }
+}
+
+function buyGroupByCategory(data) {
+  const grouped = {};
+  data.forEach(item => {
+    const cat = item.category || 'VARIOS';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push({
+      key: item.item_key || '',
+      desc: item.description || '',
+      qty: Number(item.qty || 0),
+      unit: item.unit || '',
+      cost: Number(item.cost_estimated || 0)
+    });
+  });
+  return grouped;
+}
+
+function buyRenderCategoryChips() {
+  const container = document.getElementById('buyCategoryChips');
+  container.innerHTML = '';
+
+  const allChip = document.createElement('div');
+  allChip.className = 'buy-chip active';
+  allChip.onclick = () => buyFilterCategory('');
+  allChip.innerHTML = '<span>Todas</span>';
+  container.appendChild(allChip);
+
+  Object.keys(buyGroupedData).sort().forEach(category => {
+    const chip = document.createElement('div');
+    chip.className = 'buy-chip';
+    chip.dataset.category = category;
+    chip.onclick = () => buyFilterCategory(category);
+    const icon = buyCategoryIcons[category] || '📦';
+    chip.innerHTML = `<span style="font-size:16px;">${icon}</span><span>${category}</span>`;
+    container.appendChild(chip);
+  });
+}
+
+function buyFilterCategory(category) {
+  buyCurrentFilter = category;
+  
+  document.querySelectorAll('.buy-chip').forEach(chip => {
+    const isAll = !chip.dataset.category && category === '';
+    const isMatch = chip.dataset.category === category;
+    chip.classList.toggle('active', isAll || isMatch);
+  });
+  
+  buyRenderListView();
+  if (buyCurrentView === 'dashboard') {
+    buyRenderDashboard();
+  }
+}
+
+function buyUpdateKPIs() {
+  const totalCost = buyRawData.reduce((sum, item) => sum + Number(item.cost_estimated || 0), 0);
+  const totalItems = buyRawData.length;
+  const categories = Object.keys(buyGroupedData).length;
+
+  document.getElementById('buyTotalCost').textContent = '$' + totalCost.toLocaleString('es-UY', {maximumFractionDigits:0});
+  document.getElementById('buyTotalItems').textContent = totalItems;
+  document.getElementById('buyTotalCategories').textContent = categories;
+  document.getElementById('buyTotalCount').textContent = totalItems;
+  buyUpdateCheckedCount();
+}
+
+function buyRenderListView() {
+  const container = document.getElementById('buyListContainer');
+  container.innerHTML = '';
+
+  const categories = buyCurrentFilter ? [buyCurrentFilter] : Object.keys(buyGroupedData).sort();
+
+  categories.forEach(category => {
+    if (!buyGroupedData[category]) return;
+
+    const items = buyGroupedData[category];
+    const categoryTotal = items.reduce((sum, item) => sum + item.cost, 0);
+
+    const section = document.createElement('div');
+    section.className = 'buy-category-section';
+
+    const header = document.createElement('div');
+    header.className = 'buy-category-header';
+    header.onclick = () => buyToggleCategory(category);
+    const icon = buyCategoryIcons[category] || '📦';
+    header.innerHTML = `
+      <div class="buy-category-title">
+        <div class="buy-category-icon">${icon}</div>
+        <div class="buy-category-name">${category}</div>
+      </div>
+      <div class="buy-category-stats">
+        <div class="buy-category-count">${items.length} items</div>
+        <div class="buy-category-total">$${categoryTotal.toLocaleString('es-UY', {maximumFractionDigits:0})}</div>
+        <div class="buy-category-toggle" id="buy-toggle-${category}">▼</div>
+      </div>
+    `;
+    section.appendChild(header);
+
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'buy-category-items';
+    itemsContainer.id = `buy-items-${category}`;
+
+    items.forEach((item, idx) => {
+      const itemId = `${category}-${idx}`;
+      const card = document.createElement('div');
+      card.className = 'buy-item-card';
+      card.id = `buy-card-${itemId}`;
+      if (buyCheckedItems.has(itemId)) card.classList.add('checked');
+
+      card.innerHTML = `
+        <input type="checkbox" class="buy-item-checkbox" id="buy-check-${itemId}" ${buyCheckedItems.has(itemId) ? 'checked' : ''} onchange="buyToggleCheck('${itemId}')">
+        <div class="buy-item-info">
+          <div class="buy-item-key">${escapeHtml(item.key)}</div>
+          <div class="buy-item-desc">${escapeHtml(item.desc)}</div>
+        </div>
+        <div class="buy-item-details">
+          <div class="buy-item-qty">${item.qty.toFixed(2).replace(/\.00$/, '')}</div>
+          <div class="buy-item-unit">${escapeHtml(item.unit)}</div>
+          <div class="buy-item-cost">$${item.cost.toLocaleString('es-UY', {maximumFractionDigits:0})}</div>
+        </div>
+      `;
+      itemsContainer.appendChild(card);
+    });
+
+    section.appendChild(itemsContainer);
+    container.appendChild(section);
+  });
+}
+
+function buyRenderDashboard() {
+  const allItems = buyRawData;
+  
+  // Top 5 items
+  buyRenderTopItems(allItems);
+  
+  // Gráficos
+  const categories = Object.keys(buyGroupedData).sort();
+  const categoryTotals = {};
+  categories.forEach(cat => {
+    categoryTotals[cat] = buyGroupedData[cat].reduce((sum, item) => sum + item.cost, 0);
+  });
+  
+  buyRenderCategoryChart(categories, categoryTotals);
+  buyRenderQuantityChart(categories);
+  buyRenderSummaryTable(categories, categoryTotals);
+}
+
+function buyRenderTopItems(allItems) {
+  const container = document.getElementById('buyTopItems');
+  container.innerHTML = '';
+
+  const items = allItems.map(item => ({
+    key: item.item_key,
+    desc: item.description,
+    cost: Number(item.cost_estimated || 0)
+  }));
+
+  const sorted = items.sort((a, b) => b.cost - a.cost).slice(0, 5);
+
+  sorted.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'buy-top-item';
+    card.innerHTML = `
+      <div class="buy-top-rank">${idx + 1}</div>
+      <div class="buy-top-info">
+        <div class="buy-top-name">${escapeHtml(item.key)}</div>
+        <div class="buy-top-desc">${escapeHtml(item.desc)}</div>
+      </div>
+      <div class="buy-top-cost">$${item.cost.toLocaleString('es-UY', {maximumFractionDigits:0})}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function buyRenderCategoryChart(categories, categoryTotals) {
+  const ctx = document.getElementById('buyCategoryChart');
+  
+  if (buyCategoryChart) buyCategoryChart.destroy();
+
+  const colors = [
+    'rgba(0,242,255,0.8)', 'rgba(0,255,136,0.8)', 'rgba(255,204,0,0.8)', 'rgba(255,149,0,0.8)',
+    'rgba(147,112,219,0.8)', 'rgba(255,105,180,0.8)', 'rgba(64,224,208,0.8)', 'rgba(255,215,0,0.8)',
+    'rgba(30,144,255,0.8)', 'rgba(255,69,0,0.8)', 'rgba(50,205,50,0.8)', 'rgba(255,20,147,0.8)'
+  ];
+
+  buyCategoryChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: categories,
+      datasets: [{
+        data: categories.map(cat => categoryTotals[cat]),
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8', '1')),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'right',
+          labels: { 
+            color: '#e7edf6', 
+            padding: 12,
+            font: { size: 11 },
+            generateLabels: function(chart) {
+              const data = chart.data;
+              return data.labels.map((label, i) => {
+                const value = data.datasets[0].data[i];
+                return {
+                  text: `${label}: $${value.toLocaleString('es-UY', {maximumFractionDigits:0})}`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  hidden: false,
+                  index: i
+                };
+              });
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function buyRenderQuantityChart(categories) {
+  const ctx = document.getElementById('buyQuantityChart');
+  
+  if (buyQuantityChart) buyQuantityChart.destroy();
+
+  const categoryQtys = categories.map(cat => {
+    return buyGroupedData[cat].reduce((sum, item) => sum + item.qty, 0);
+  });
+
+  buyQuantityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: categories,
+      datasets: [{
+        label: 'Cantidad Total',
+        data: categoryQtys,
+        backgroundColor: 'rgba(0,242,255,0.7)',
+        borderColor: '#00f2ff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9fb0c3' }, grid: { color: 'rgba(34, 50, 71, 0.5)' } },
+        y: { beginAtZero: true, ticks: { color: '#9fb0c3' }, grid: { color: 'rgba(34, 50, 71, 0.5)' } }
+      }
+    }
+  });
+}
+
+function buyRenderSummaryTable(categories, categoryTotals) {
+  const tbody = document.getElementById('buySummaryTable');
+  tbody.innerHTML = '';
+
+  const totalCost = Object.values(categoryTotals).reduce((sum, cost) => sum + cost, 0);
+  const sorted = categories.sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+
+  sorted.forEach(category => {
+    const items = buyGroupedData[category];
+    const cost = categoryTotals[category];
+    const percent = ((cost / totalCost) * 100).toFixed(1);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${escapeHtml(category)}</b></td>
+      <td class="right">${items.length}</td>
+      <td class="right">$${cost.toLocaleString('es-UY', {maximumFractionDigits:0})}</td>
+      <td class="right">${percent}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function buyToggleCategory(category) {
+  const items = document.getElementById(`buy-items-${category}`);
+  const toggle = document.getElementById(`buy-toggle-${category}`);
+  const header = toggle.closest('.buy-category-header');
+  
+  items.classList.toggle('collapsed');
+  toggle.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+}
+
+function buyExpandAll() {
+  document.querySelectorAll('.buy-category-items').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('.buy-category-toggle').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('.buy-category-header').forEach(el => el.classList.remove('collapsed'));
+}
+
+function buyCollapseAll() {
+  document.querySelectorAll('.buy-category-items').forEach(el => el.classList.add('collapsed'));
+  document.querySelectorAll('.buy-category-toggle').forEach(el => el.classList.add('collapsed'));
+  document.querySelectorAll('.buy-category-header').forEach(el => el.classList.add('collapsed'));
+}
+
+function buyToggleCheck(itemId) {
+  const checkbox = document.getElementById(`buy-check-${itemId}`);
+  const card = document.getElementById(`buy-card-${itemId}`);
+  
+  if (checkbox.checked) {
+    buyCheckedItems.add(itemId);
+    card.classList.add('checked');
+  } else {
+    buyCheckedItems.delete(itemId);
+    card.classList.remove('checked');
+  }
+  
+  buyUpdateCheckedCount();
+}
+
+function buyUncheckAll() {
+  buyCheckedItems.clear();
+  document.querySelectorAll('.buy-item-checkbox').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.buy-item-card').forEach(card => card.classList.remove('checked'));
+  buyUpdateCheckedCount();
+}
+
+function buyUpdateCheckedCount() {
+  const total = document.getElementById('buyTotalCount').textContent;
+  const checked = buyCheckedItems.size;
+  document.getElementById('buyCheckedCount').textContent = checked;
+  
+  const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+  document.getElementById('buyCheckedPercent').textContent = percent + '%';
+}
+
+// ---- FUNCIÓN PRINCIPAL: refreshPurchases (reemplaza la original) ----
+async function refreshPurchases(){
+  const days = Number(document.getElementById("buyDays").value || 7);
+  const line = document.getElementById("buyLine").value || null;
+  const status = document.getElementById("buyStatus").value || null;
+
+  const { data, error } = await sb.rpc("fn_lista_compras_operativa", {
+    p_days: days,
+    p_line_name: (line && line.trim() !== "") ? line : null,
+    p_status_list: (status && status.trim() !== "") ? status : null
+  });
+  if(error) throw error;
+
+  const search = document.getElementById("buySearch").value.trim().toLowerCase();
+  let rows = (data || []);
+  if(search){
+    rows = rows.filter(r =>
+      String(r.category||"").toLowerCase().includes(search)
+      || String(r.item_key||"").toLowerCase().includes(search)
+      || String(r.description||"").toLowerCase().includes(search)
+    );
+  }
+
+  // Guardar datos raw y agrupar
+  buyRawData = rows;
+  buyGroupedData = buyGroupByCategory(rows);
+
+  // Renderizar componentes
+  buyRenderCategoryChips();
+  buyRenderListView();
+  buyUpdateKPIs();
+  
+  // Si estamos en vista dashboard, actualizar
+  if (buyCurrentView === 'dashboard') {
+    setTimeout(() => buyRenderDashboard(), 100);
+  }
+}
+</script>
 
   <!-- HERRAJES -->
   <section id="tab-herrajes" class="card hidden">
@@ -384,7 +1031,7 @@
           <button class="btn" id="btnPrint" disabled>Imprimir</button>
         </div>
         <div class="muted" style="margin-top:10px;">
-          Tip: "Cant." es para preparar. Si viene en pack, muestra compra sugerida.
+          Tip: “Cant.” es para preparar. Si viene en pack, muestra compra sugerida.
         </div>
       </div>
     </div>
@@ -561,77 +1208,6 @@
     </div>
   </section>
 
-  <!-- PLAN VS REAL -->
-  <section id="tab-planvsreal" class="card hidden">
-    <div class="k">Plan vs Real • Comparación de tiempos</div>
-
-    <div class="grid no-print">
-      <div class="span-12">
-        <div class="row">
-          <div class="field">
-            <label>Línea</label>
-            <select id="pvrLine"><option value="">Todas</option></select>
-          </div>
-
-          <div class="field">
-            <label>Estados</label>
-            <input id="pvrStatus" value="7,13,17,18,19,21,22"/>
-          </div>
-
-          <div class="field">
-            <label>Ventana (días)</label>
-            <select id="pvrDays">
-              <option value="7" selected>7</option>
-              <option value="14">14</option>
-              <option value="30">30</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>Mostrar</label>
-            <select id="pvrLimit">
-              <option value="50">50</option>
-              <option value="100" selected>100</option>
-              <option value="200">200</option>
-            </select>
-          </div>
-
-          <button class="btn" id="btnLoadPlanVsReal">Cargar datos</button>
-        </div>
-      </div>
-
-      <div class="span-12">
-        <div class="muted" style="background:rgba(255,204,0,0.08); border:1px solid rgba(255,204,0,0.25); padding:12px; border-radius:10px;">
-          <b>⚠️ NOTA:</b> Los datos "Real" están en desarrollo. Actualmente se muestran placeholders. 
-          La integración completa con eventos de corte requiere mapeo piece_id → service_id (pendiente de implementación).
-        </div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="span-12">
-        <table>
-          <thead>
-          <tr>
-            <th>Servicio</th>
-            <th class="nowrap">Línea</th>
-            <th class="nowrap">Entrega</th>
-            <th class="right nowrap">Score</th>
-            <th class="right nowrap">Plan Cut</th>
-            <th class="right nowrap">Plan Edge</th>
-            <th class="right nowrap">Plan Mach</th>
-            <th class="right nowrap">Real Cut</th>
-            <th class="right nowrap">Real Edge</th>
-            <th class="right nowrap">Real Mach</th>
-            <th class="nowrap">Link OK</th>
-          </tr>
-          </thead>
-          <tbody id="pvrTbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
   <!-- PRE PACKING -->
   <section id="tab-packing" class="card hidden">
     <div class="k">Pre Packing • Control por módulo</div>
@@ -729,7 +1305,7 @@
 <script>
   // ========= CONFIG =========
   const SUPABASE_URL = "https://qnjizqowddtvzzfillmo.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFuaml6cW93ZGR0dnp6ZmlsbG1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5MDY2NzUsImV4cCI6MjA4NTQ4MjY3NX0.5P0nSzjO8Y3N-0RFTKcoS5G-ntF0OUixGMOkPqGUHc4";
+  const SUPABASE_ANON_KEY = "sb_publishable_Agu_I1nw4mY1qRARQBbaHQ_6lTWsFTh";
   // ==========================
 
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -757,7 +1333,6 @@
     document.getElementById("tab-compras").classList.toggle("hidden", name!=="compras");
     document.getElementById("tab-herrajes").classList.toggle("hidden", name!=="herrajes");
     document.getElementById("tab-complejidad").classList.toggle("hidden", name!=="complejidad");
-    document.getElementById("tab-planvsreal").classList.toggle("hidden", name!=="planvsreal");
     document.getElementById("tab-packing").classList.toggle("hidden", name!=="packing");
   }
   tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
@@ -769,8 +1344,9 @@
     const { data, error } = await sb
       .from("mob_services")
       .select("production_line_name")
-      .order("production_line_name", { ascending: true })
+      .not("production_line_name","is",null)
       .limit(10000);
+
     if(error) throw error;
 
     const lines = Array.from(new Set((data||[]).map(x => x.production_line_name).filter(Boolean)))
@@ -782,12 +1358,10 @@
     const prodLine = document.getElementById("prodLine");
     const buyLine  = document.getElementById("buyLine");
     const cxLine   = document.getElementById("cxLine");
-    const pvrLine  = document.getElementById("pvrLine");
 
     prodLine.innerHTML = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
     buyLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
     cxLine.innerHTML   = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
-    pvrLine.innerHTML  = `<option value="">Todas</option>` + lines.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join("");
   }
 
   async function refreshServices(){
@@ -1078,89 +1652,6 @@
     document.getElementById("mCumMach").textContent = num(lastMach,0);
   }
 
-  // ---- Plan vs Real ----
-  async function refreshPlanVsReal(){
-    const line = document.getElementById("pvrLine").value || null;
-    const statusSet = csvToSet(document.getElementById("pvrStatus").value);
-    const days = Number(document.getElementById("pvrDays").value || 7);
-    const limit = Number(document.getElementById("pvrLimit").value || 100);
-
-    // Calcular ventana de fechas
-    const today = new Date();
-    const futureDate = new Date(today);
-    futureDate.setDate(futureDate.getDate() + days);
-    const todayStr = today.toISOString().slice(0,10);
-    const futureStr = futureDate.toISOString().slice(0,10);
-
-    // Cargar complejidad
-    const { data: complexity, error: e1 } = await sb
-      .from("vw_service_complexity")
-      .select("service_id, internal_code, clients_names, production_line_name, status, estimated_delivery, complexity_score, edged_sides_total, drills_est_total, furrows_total, milling_total")
-      .gte("estimated_delivery", todayStr)
-      .lte("estimated_delivery", futureStr)
-      .order("estimated_delivery", { ascending: true })
-      .limit(1000);
-
-    if(e1) throw e1;
-
-    // Filtrar por línea y estados
-    let filtered = (complexity || []).filter(r => {
-      if(line && r.production_line_name !== line) return false;
-      if(statusSet.size && !statusSet.has(String(r.status))) return false;
-      return true;
-    }).slice(0, limit);
-
-    // Coeficientes (usar los mismos del tab Complejidad)
-    const coefEdge = Number(document.getElementById("coefEdge").value || 0.60);
-    const coefDrill = Number(document.getElementById("coefDrill").value || 0.015);
-    const coefFurrow = Number(document.getElementById("coefFurrow").value || 2.50);
-    const coefMill = Number(document.getElementById("coefMill").value || 1.00);
-
-    // Renderizar tabla
-    const tbody = document.getElementById("pvrTbody");
-    tbody.innerHTML = "";
-
-    for(const r of filtered){
-      // Buscar cutting_times en cachedServices
-      const svc = cachedServices.find(s => Number(s.service_id) === Number(r.service_id));
-      const planCut = svc?.cutting_times ? Number(svc.cutting_times) : 0;
-
-      // Calcular estimaciones edge y mach
-      const edgeSides = Number(r.edged_sides_total || 0);
-      const drills = Number(r.drills_est_total || 0);
-      const furrows = Number(r.furrows_total || 0);
-      const milling = Number(r.milling_total || 0);
-
-      const planEdge = edgeSides * coefEdge;
-      const planMach = (drills * coefDrill) + (furrows * coefFurrow) + (milling * coefMill);
-
-      // Real (placeholders por ahora)
-      const realCut = "-";
-      const realEdge = "-";
-      const realMach = "-";
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>
-          <div style="font-weight:900;">${escapeHtml(r.internal_code || "")}</div>
-          <div class="muted">${escapeHtml(r.clients_names || "")}</div>
-          <div class="mono muted">#${r.service_id}</div>
-        </td>
-        <td class="nowrap">${escapeHtml(r.production_line_name || "-")}</td>
-        <td class="nowrap">${fmtDate(r.estimated_delivery)}</td>
-        <td class="right nowrap">${num(r.complexity_score, 1)}</td>
-        <td class="right nowrap">${num(planCut, 0)}</td>
-        <td class="right nowrap">${num(planEdge, 0)}</td>
-        <td class="right nowrap">${num(planMach, 0)}</td>
-        <td class="right nowrap muted">${realCut}</td>
-        <td class="right nowrap muted">${realEdge}</td>
-        <td class="right nowrap muted">${realMach}</td>
-        <td class="nowrap"><span class="tag warn">❌ PEND</span></td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }
-
   // ---- Pre Packing ----
   function populatePackingServiceSelect(){
     const sel = document.getElementById("packService");
@@ -1311,13 +1802,6 @@
     document.getElementById("btnRunSchedule").disabled = true;
     try{ await refreshSchedule(); }
     finally { document.getElementById("btnRunSchedule").disabled = false; }
-  });
-
-  // Plan vs Real
-  document.getElementById("btnLoadPlanVsReal").addEventListener("click", async () => {
-    document.getElementById("btnLoadPlanVsReal").disabled = true;
-    try{ await refreshPlanVsReal(); }
-    finally { document.getElementById("btnLoadPlanVsReal").disabled = false; }
   });
 
   // Pre Packing events
