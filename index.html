@@ -151,6 +151,21 @@
       .metrics-row { grid-template-columns: 1fr 1fr; }
       .cap-summary { grid-template-columns: 1fr; }
     }
+
+    /* ── Tracking project cards ── */
+    .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+    .track-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; transition: border-color .15s; }
+    .track-card:hover { border-color: var(--accent); }
+    .track-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .track-card-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .track-card-dates { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+    .track-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .track-stat { text-align: center; }
+    .track-stat-num { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+    .track-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); }
+    .track-days { display: flex; gap: 2px; align-items: flex-end; height: 36px; }
+    .track-day-bar { flex: 1; border-radius: 2px 2px 0 0; background: var(--accent); opacity: .6; min-height: 2px; transition: height .3s; }
+    .track-day-bar:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -159,13 +174,14 @@
   <h1>Producción</h1>
   <span class="subtitle">CNC CX100</span>
   <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('cola')" id="tab-cola">Cola</button>
+    <button class="nav-tab active" onclick="switchTab('tracking')" id="tab-tracking">Tracking</button>
+    <button class="nav-tab" onclick="switchTab('cola')" id="tab-cola">Cola</button>
     <button class="nav-tab" onclick="switchTab('dia')" id="tab-dia">Día</button>
     <button class="nav-tab" onclick="switchTab('historico')" id="tab-historico">Histórico</button>
     <button class="nav-tab" onclick="switchTab('capacidad')" id="tab-capacidad">Capacidad</button>
   </nav>
   <div class="header-actions">
-    <a href="comercial.html" class="btn btn-secondary btn-sm" style="text-decoration:none">← Comercial</a>
+    <a href="https://comercial-4xh.pages.dev/" class="btn btn-secondary btn-sm" style="text-decoration:none">← Comercial</a>
     <button class="dark-toggle" onclick="toggleDark()" title="Modo oscuro/claro">◐</button>
   </div>
 </div>
@@ -173,9 +189,69 @@
 <div class="container">
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- TAB 0: TRACKING POR PROYECTO              -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel active" id="panel-tracking">
+
+  <div class="metrics-row" id="trackMetrics">
+    <div class="metric-card"><div class="metric-label">Proyectos activos</div><div class="metric-value" id="tProjects">—</div></div>
+    <div class="metric-card"><div class="metric-label">Piezas mecanizadas</div><div class="metric-value" id="tPieces">—</div><div class="metric-sub" id="tPiecesSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo total CNC</div><div class="metric-value" id="tTime">—</div></div>
+    <div class="metric-card"><div class="metric-label">Piezas MobCloud únicas</div><div class="metric-value" id="tMobParts">—</div><div class="metric-sub">con ID numérico</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      Tracking por proyecto
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:flex-end;">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Desde</label>
+          <input type="date" id="trackFrom" onchange="loadTracking()" style="width:150px">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Hasta</label>
+          <input type="date" id="trackTo" onchange="loadTracking()" style="width:150px">
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="trackSetRange('week')">7d</button>
+        <button class="btn btn-sm btn-secondary" onclick="trackSetRange('month')">30d</button>
+        <button class="btn btn-sm btn-secondary" onclick="trackSetRange('all')">Todo</button>
+      </div>
+    </div>
+    <div id="trackProjectCards" class="empty">Cargando...</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      Piezas MobCloud detectadas
+      <span class="badge" id="trackPartsBadge">0</span>
+      <div style="margin-left:auto">
+        <input type="text" id="trackPartSearch" placeholder="Buscar part ID..." oninput="renderTrackParts()" style="width:180px;padding:5px 8px;font-size:12px">
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:12px">Piezas con ID numérico (MobCloud) agrupadas por proyecto. Cada ID corresponde a una pieza del parts/list de un servicio.</p>
+    <div class="table-wrap" style="max-height:500px;overflow-y:auto">
+      <table class="cycle-table">
+        <thead>
+          <tr>
+            <th>MobCloud Part ID</th>
+            <th>Proyecto</th>
+            <th style="text-align:right">Repeticiones</th>
+            <th style="text-align:right">Tiempo total</th>
+            <th style="text-align:right">Promedio</th>
+            <th>Primera vez</th>
+            <th>Última vez</th>
+          </tr>
+        </thead>
+        <tbody id="trackPartsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- TAB 1: COLA DE PRODUCCIÓN                  -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="tab-panel active" id="panel-cola">
+<div class="tab-panel" id="panel-cola">
 
   <div class="metrics-row" id="queueMetrics">
     <div class="metric-card"><div class="metric-label">Pendientes</div><div class="metric-value" id="mPending">—</div></div>
@@ -487,7 +563,7 @@ if (localStorage.getItem("dark")==="true") document.documentElement.classList.ad
 // ══════════════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════════════
-let currentTab = "cola";
+let currentTab = "tracking";
 function switchTab(tab) {
   currentTab = tab;
   qa(".nav-tab").forEach(t => t.classList.remove("active"));
@@ -495,10 +571,172 @@ function switchTab(tab) {
   qs(`#tab-${tab}`).classList.add("active");
   qs(`#panel-${tab}`).classList.add("active");
   
+  if (tab === "tracking") loadTracking();
   if (tab === "cola") loadQueue();
   if (tab === "dia") loadDayData();
   if (tab === "historico") loadHistorical();
   if (tab === "capacidad") loadCapacity();
+}
+
+// ══════════════════════════════════════════════
+// TAB 0: TRACKING POR PROYECTO
+// ══════════════════════════════════════════════
+let trackProjects = [];
+let trackParts = [];
+
+function trackSetRange(range) {
+  const to = new Date();
+  const toStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  qs("#trackTo").value = toStr(to);
+  if (range === "week") { const f = new Date(); f.setDate(f.getDate()-7); qs("#trackFrom").value = toStr(f); }
+  else if (range === "month") { const f = new Date(); f.setDate(f.getDate()-30); qs("#trackFrom").value = toStr(f); }
+  else { qs("#trackFrom").value = ""; }
+  loadTracking();
+}
+
+async function loadTracking() {
+  try {
+    const from = qs("#trackFrom").value;
+    const to = qs("#trackTo").value;
+
+    // Build date filters
+    let dateFilter = "";
+    if (from) dateFilter += `&log_date=gte.${from}`;
+    if (to) dateFilter += `&log_date=lte.${to}`;
+
+    // Fetch project progress (grouped by project_folder + log_date)
+    const [projects, parts] = await Promise.all([
+      sbQuery("cnc_project_progress", `machine_id=eq.${MACHINE_ID}${dateFilter}&order=log_date.desc`),
+      sbQuery("cnc_part_stats", `order=total_seconds.desc&limit=500`),
+    ]);
+
+    trackProjects = projects;
+    trackParts = parts;
+
+    renderTrackMetrics();
+    renderTrackProjects();
+    renderTrackParts();
+  } catch(e) { toast(e.message, "error"); }
+}
+
+function renderTrackMetrics() {
+  // Aggregate across all project progress rows
+  const byProject = {};
+  for (const row of trackProjects) {
+    const key = row.project_folder || "(sin carpeta)";
+    if (!byProject[key]) byProject[key] = { cycles: 0, seconds: 0, pieces: new Set(), mobParts: new Set() };
+    byProject[key].cycles += row.completed_cycles || 0;
+    byProject[key].seconds += row.total_seconds || 0;
+  }
+
+  const totalCycles = trackProjects.reduce((s, r) => s + (r.completed_cycles || 0), 0);
+  const totalSeconds = trackProjects.reduce((s, r) => s + (r.total_seconds || 0), 0);
+  const uniqueMobParts = trackParts.filter(p => p.mob_part_id).length;
+
+  qs("#tProjects").textContent = Object.keys(byProject).length;
+  qs("#tPieces").textContent = totalCycles.toLocaleString();
+  qs("#tPiecesSub").textContent = `ciclos completados`;
+  qs("#tTime").textContent = fmtMin(totalSeconds);
+  qs("#tMobParts").textContent = uniqueMobParts;
+}
+
+function renderTrackProjects() {
+  const container = qs("#trackProjectCards");
+
+  // Group by project_folder, aggregate across dates
+  const byProject = {};
+  for (const row of trackProjects) {
+    const key = row.project_folder || "(sin carpeta)";
+    if (!byProject[key]) byProject[key] = { 
+      name: key, totalCycles: 0, totalSeconds: 0,
+      uniquePieces: 0, mobParts: 0, days: {},
+      firstDate: row.log_date, lastDate: row.log_date
+    };
+    const p = byProject[key];
+    p.totalCycles += row.completed_cycles || 0;
+    p.totalSeconds += row.total_seconds || 0;
+    p.uniquePieces += row.unique_pieces_done || 0;
+    p.mobParts += row.mob_parts_done || 0;
+    p.days[row.log_date] = (p.days[row.log_date] || 0) + (row.completed_cycles || 0);
+    if (row.log_date < p.firstDate) p.firstDate = row.log_date;
+    if (row.log_date > p.lastDate) p.lastDate = row.log_date;
+  }
+
+  const projects = Object.values(byProject).sort((a, b) => b.totalCycles - a.totalCycles);
+
+  if (!projects.length) {
+    container.innerHTML = `<div class="empty">Sin datos para el rango seleccionado</div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="track-grid">${projects.map(p => {
+    const avgSec = p.totalCycles > 0 ? Math.round(p.totalSeconds / p.totalCycles) : 0;
+    const daysCount = Object.keys(p.days).length;
+
+    // Mini bar chart of daily production
+    const allDates = Object.keys(p.days).sort();
+    const maxDay = Math.max(...Object.values(p.days), 1);
+    const dayBars = allDates.map(d => {
+      const h = (p.days[d] / maxDay) * 30;
+      const dateObj = new Date(d + "T12:00:00");
+      return `<div class="track-day-bar" style="height:${Math.max(2,h)}px" title="${d} (${DAY_NAMES[dateObj.getDay()]}): ${p.days[d]} piezas"></div>`;
+    }).join("");
+
+    // Count mob parts for this project from trackParts
+    const projectMobParts = trackParts.filter(pt => pt.project_folder === (p.name === "(sin carpeta)" ? null : p.name));
+
+    return `
+      <div class="track-card">
+        <div class="track-card-header">
+          <div>
+            <div class="track-card-name">${escH(p.name)}</div>
+            <div class="track-card-dates">${p.firstDate} → ${p.lastDate} (${daysCount} días)</div>
+          </div>
+          <div style="text-align:right">
+            <span style="font-family:var(--mono);font-size:12px;color:var(--accent)">${projectMobParts.length} IDs MobCloud</span>
+          </div>
+        </div>
+        <div class="track-stats">
+          <div class="track-stat">
+            <div class="track-stat-num" style="color:var(--accent)">${p.totalCycles}</div>
+            <div class="track-stat-label">Ciclos</div>
+          </div>
+          <div class="track-stat">
+            <div class="track-stat-num">${fmtMin(p.totalSeconds)}</div>
+            <div class="track-stat-label">Tiempo</div>
+          </div>
+          <div class="track-stat">
+            <div class="track-stat-num">${fmtSec(avgSec)}</div>
+            <div class="track-stat-label">Promedio</div>
+          </div>
+        </div>
+        ${dayBars ? `<div style="margin-top:4px"><div style="font-size:10px;color:var(--text-3);margin-bottom:4px">Producción por día</div><div class="track-days">${dayBars}</div></div>` : ""}
+      </div>
+    `;
+  }).join("")}</div>`;
+}
+
+function renderTrackParts() {
+  const search = (qs("#trackPartSearch").value || "").toLowerCase();
+  let items = trackParts;
+  if (search) items = items.filter(p => 
+    String(p.mob_part_id).includes(search) ||
+    (p.piece_name||"").toLowerCase().includes(search) ||
+    (p.project_folder||"").toLowerCase().includes(search)
+  );
+  qs("#trackPartsBadge").textContent = items.length;
+
+  qs("#trackPartsBody").innerHTML = items.map(p => `
+    <tr>
+      <td style="font-family:var(--mono);font-weight:600">${p.mob_part_id}</td>
+      <td style="font-size:12px;color:var(--text-2)">${escH(p.project_folder || "—")}</td>
+      <td style="text-align:right;font-family:var(--mono)">${p.repetitions_completed}${p.repetitions_interrupted > 0 ? ` <span style="color:var(--danger)">(+${p.repetitions_interrupted}✗)</span>` : ""}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtSec(p.total_seconds)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtSec(p.avg_seconds)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${p.first_seen ? new Date(p.first_seen).toLocaleDateString("es-UY") : "—"}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${p.last_seen ? new Date(p.last_seen).toLocaleDateString("es-UY") : "—"}</td>
+    </tr>
+  `).join("");
 }
 
 // ══════════════════════════════════════════════
@@ -933,7 +1171,8 @@ function renderComparison(cap) {
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
-loadQueue();
+// Default: last 30 days
+trackSetRange("month");
 qs("#dayDate").value = todayStr();
 </script>
 </body>
