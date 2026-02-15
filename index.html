@@ -98,6 +98,15 @@
     .queue-table .svc-desc { font-size: 11px; color: var(--text-3); }
     .queue-actions { display: flex; gap: 4px; }
 
+    /* ── Station indicators ── */
+    .station-cell { text-align: center; min-width: 90px; }
+    .station-dot { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; transition: all .2s; border: 2px solid var(--border); color: var(--text-3); }
+    .station-dot:hover { transform: scale(1.15); }
+    .station-dot.pending { border-color: var(--border); background: var(--bg); color: var(--text-3); }
+    .station-dot.in_progress { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+    .station-dot.completed { border-color: var(--success); background: #e3f5ea; color: var(--success); }
+    .station-info { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 3px; white-space: nowrap; }
+
     /* ── Timeline (day view) ── */
     .timeline-container { position: relative; height: 60px; margin: 12px 0; }
     .tl-bar { position: absolute; top: 10px; height: 30px; border-radius: 3px; opacity: 0.7; cursor: default; }
@@ -294,14 +303,11 @@
           <tr>
             <th style="width:30px">#</th>
             <th>Servicio</th>
-            <th>Estado</th>
-            <th style="text-align:center">Piezas CNC</th>
-            <th>Progreso CNC</th>
-            <th style="text-align:right">Est. CNC</th>
-            <th style="text-align:right">Real CNC</th>
-            <th style="text-align:right">Est. Corte</th>
-            <th style="text-align:right">Est. Enchape</th>
-            <th>Fecha</th>
+            <th style="text-align:center">✂ Corte</th>
+            <th style="text-align:center">▤ Enchape</th>
+            <th style="text-align:center">⚙ Mecanizado</th>
+            <th style="text-align:center">☐ Pre Packing</th>
+            <th style="text-align:center">📦 Packing</th>
             <th></th>
           </tr>
         </thead>
@@ -866,11 +872,20 @@ function renderQueue() {
   const tbody = qs("#queueBody");
   tbody.innerHTML = items.map((item, idx) => {
     const pct = item.cnc_progress_pct || 0;
-    const barClass = pct >= 100 ? "green" : pct > 0 ? "blue" : "";
-    const cncEst = item.cnc_time_est_min ? fmtMinFromMin(item.cnc_time_est_min) : "—";
-    const cncReal = item.cnc_total_seconds > 0 ? fmtMin(item.cnc_total_seconds) : "—";
-    const cutEst = item.cutting_time_est > 0 ? fmtMinFromMin(item.cutting_time_est) : "—";
-    const edgeEst = item.edge_time_est_min ? fmtMinFromMin(item.edge_time_est_min) : "—";
+    const cncEst = item.cnc_time_est_min ? fmtMinFromMin(item.cnc_time_est_min) : "";
+    const cncReal = item.cnc_total_seconds > 0 ? fmtMin(item.cnc_total_seconds) : "";
+    const cutEst = item.cutting_time_est > 0 ? fmtMinFromMin(item.cutting_time_est) : "";
+    const edgeEst = item.edge_time_est_min ? fmtMinFromMin(item.edge_time_est_min) : "";
+
+    // Station statuses (stored in item or default)
+    const st = item.stations || {};
+    const stCorte = st.corte || "pending";
+    const stEnchape = st.enchape || "pending";
+    const stMecanizado = pct >= 100 ? "completed" : pct > 0 ? "in_progress" : (st.mecanizado || "pending");
+    const stPrepack = st.prepacking || "pending";
+    const stPacking = st.packing || "pending";
+    
+    const dotIcon = s => s === "completed" ? "✓" : s === "in_progress" ? "▶" : "·";
     
     return `<tr data-id="${item.id}">
       <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">${idx+1}</td>
@@ -879,23 +894,26 @@ function renderQueue() {
         ${item.client_name ? `<div class="svc-client">${escH(item.client_name)}</div>` : ""}
         ${item.description ? `<div class="svc-desc">${escH(item.description)}</div>` : ""}
       </td>
-      <td><span class="status status-${item.status}">${statusLabel(item.status)}</span></td>
-      <td style="text-align:center;font-family:var(--mono)">${item.cnc_parts_done||0} / ${item.parts_with_machining||0}</td>
-      <td style="min-width:120px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="progress-bar" style="flex:1"><div class="progress-fill ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--text-2);min-width:36px">${pct}%</span>
-        </div>
+      <td class="station-cell">
+        <div class="station-dot ${stCorte}" onclick="cycleStation('${item.id}','corte',this)" title="Click para cambiar">${dotIcon(stCorte)}</div>
+        ${cutEst ? `<div class="station-info">${cutEst}</div>` : ""}
       </td>
-      <td style="text-align:right;font-family:var(--mono);font-size:12px">${cncEst}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:12px;${item.cnc_total_seconds>0?"font-weight:600;color:var(--accent)":""}">${cncReal}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:12px">${cutEst}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:12px">${edgeEst}</td>
-      <td style="font-size:12px">${item.scheduled_date||"—"}</td>
+      <td class="station-cell">
+        <div class="station-dot ${stEnchape}" onclick="cycleStation('${item.id}','enchape',this)" title="Click para cambiar">${dotIcon(stEnchape)}</div>
+        ${edgeEst ? `<div class="station-info">${edgeEst}</div>` : ""}
+      </td>
+      <td class="station-cell">
+        <div class="station-dot ${stMecanizado}" onclick="cycleStation('${item.id}','mecanizado',this)" title="Click para cambiar">${dotIcon(stMecanizado)}</div>
+        <div class="station-info">${item.cnc_parts_done||0}/${item.parts_with_machining||0} pzas</div>
+        ${cncEst || cncReal ? `<div class="station-info">${cncReal ? '<b>'+cncReal+'</b>' : cncEst}</div>` : ""}
+      </td>
+      <td class="station-cell">
+        <div class="station-dot ${stPrepack}" onclick="cycleStation('${item.id}','prepacking',this)" title="Click para cambiar">${dotIcon(stPrepack)}</div>
+      </td>
+      <td class="station-cell">
+        <div class="station-dot ${stPacking}" onclick="cycleStation('${item.id}','packing',this)" title="Click para cambiar">${dotIcon(stPacking)}</div>
+      </td>
       <td class="queue-actions">
-        <select onchange="updateStatus('${item.id}',this.value)" style="width:auto;padding:3px 6px;font-size:11px">
-          ${["pending","in_progress","completed","on_hold"].map(s => `<option value="${s}" ${s===item.status?"selected":""}>${statusLabel(s)}</option>`).join("")}
-        </select>
         <button class="btn btn-sm btn-secondary" onclick="removeFromQueue('${item.id}')" title="Quitar">✕</button>
       </td>
     </tr>`;
@@ -921,6 +939,46 @@ async function removeFromQueue(id) {
     toast("Servicio quitado","info");
     loadQueue();
   } catch(e) { toast(e.message,"error"); }
+}
+
+// Station status cycling: pending → in_progress → completed → pending
+const STATION_CYCLE = { pending: "in_progress", in_progress: "completed", completed: "pending" };
+
+async function cycleStation(itemId, station, dotEl) {
+  const item = queueData.find(i => i.id === itemId);
+  if (!item) return;
+  
+  const st = item.stations || {};
+  const current = st[station] || "pending";
+  const next = STATION_CYCLE[current] || "pending";
+  st[station] = next;
+  item.stations = st;
+
+  // Visual update immediately
+  const icon = next === "completed" ? "✓" : next === "in_progress" ? "▶" : "·";
+  dotEl.className = `station-dot ${next}`;
+  dotEl.textContent = icon;
+
+  // Auto-update overall status based on stations
+  let newStatus = item.status;
+  const allStations = ["corte","enchape","mecanizado","prepacking","packing"];
+  const allCompleted = allStations.every(s => (st[s] || "pending") === "completed");
+  const anyInProgress = allStations.some(s => ["in_progress","completed"].includes(st[s] || "pending"));
+  if (allCompleted) newStatus = "completed";
+  else if (anyInProgress) newStatus = "in_progress";
+  else newStatus = "pending";
+
+  // Persist
+  try {
+    await invokeFunction("production-service", { 
+      action: "update-stations", 
+      id: itemId, 
+      stations: st,
+      status: newStatus
+    });
+  } catch(e) { 
+    console.warn("Station save:", e.message);
+  }
 }
 
 async function recalcAll() {
