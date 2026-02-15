@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Producción — La Buonora</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    :root {
+      --bg: #f7f8fa; --surface: #fff; --border: #e2e5ea;
+      --text: #1a1d23; --text-2: #5a5f6b; --text-3: #8b909c;
+      --accent: #2e5faa; --accent-hover: #24508f; --accent-light: #eaf0fb;
+      --danger: #c93c3c; --success: #2a8a4a; --warn: #c78b17; --radius: 8px;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    html.dark {
+      --bg: #1a1d23; --surface: #23272e; --border: #353a44;
+      --text: #e8eaed; --text-2: #b0b5bf; --text-3: #6b7280;
+      --accent: #5b8fd9; --accent-hover: #7ba7e5; --accent-light: #2a3444;
+      --danger: #e05555; --success: #3bb06a; --warn: #d9a030;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+    
+    /* ── Header ── */
+    .app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 50; }
+    .app-header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .app-header .subtitle { color: var(--text-3); font-size: 13px; }
+    .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .nav-tabs { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 3px; margin-left: 12px; }
+    .nav-tab { padding: 6px 14px; font-size: 12.5px; font-weight: 500; font-family: inherit; border: none; background: transparent; color: var(--text-3); cursor: pointer; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
+    .nav-tab:hover { color: var(--text); background: var(--surface); }
+    .nav-tab.active { background: var(--accent); color: white; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    
+    /* ── Shared UI ── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .card-title .badge { font-size: 11px; font-weight: 500; background: var(--accent-light); color: var(--accent); padding: 2px 8px; border-radius: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 500; font-family: inherit; border-radius: 6px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    label { font-size: 12px; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; font-size: 13px; font-family: inherit; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); transition: border-color 0.15s; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .form-group { display: flex; flex-direction: column; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-3); padding: 10px 12px; border-bottom: 2px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: var(--accent-light); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .toast-container { position: fixed; top: 70px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 10px 16px; border-radius: 8px; font-size: 13px; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.15); animation: slideIn 0.25s ease; }
+    .toast-success { background: var(--success); } .toast-error { background: var(--danger); } .toast-info { background: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    html.dark .loading-overlay { background: rgba(0,0,0,0.6); }
+    .loading-overlay.active { display: flex; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .dark-toggle { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 14px; color: var(--text); }
+    .empty { text-align: center; padding: 40px 20px; color: var(--text-3); }
+    .mono { font-family: var(--mono); }
+
+    /* ── Status badges ── */
+    .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+    .status-pending { background: #fef3d1; color: var(--warn); }
+    .status-in_progress { background: var(--accent-light); color: var(--accent); }
+    .status-completed { background: #e3f5ea; color: var(--success); }
+    .status-on_hold { background: #e8e8e8; color: #888; }
+
+    /* ── Progress bar ── */
+    .progress-bar { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .progress-fill.green { background: linear-gradient(90deg, #10b981, #34d399); }
+    .progress-fill.blue { background: linear-gradient(90deg, var(--accent), #60a5fa); }
+    .progress-fill.amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+    /* ── Summary metrics ── */
+    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+    .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); font-weight: 600; margin-bottom: 6px; }
+    .metric-value { font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--text); }
+    .metric-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+
+    /* ── Queue table ── */
+    .queue-table td { font-size: 13px; }
+    .queue-table .svc-name { font-weight: 600; color: var(--text); }
+    .queue-table .svc-client { font-size: 12px; color: var(--text-2); }
+    .queue-table .svc-desc { font-size: 11px; color: var(--text-3); }
+    .queue-actions { display: flex; gap: 4px; }
+
+    /* ── Timeline (day view) ── */
+    .timeline-container { position: relative; height: 60px; margin: 12px 0; }
+    .tl-bar { position: absolute; top: 10px; height: 30px; border-radius: 3px; opacity: 0.7; cursor: default; }
+    .tl-bar.completed { background: var(--success); }
+    .tl-bar.interrupted { background: var(--danger); }
+    .tl-bar:hover { opacity: 1; }
+    .tl-axis { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 10px; font-family: var(--mono); color: var(--text-3); }
+    .tl-grid { position: absolute; top: 5px; bottom: 16px; width: 1px; background: var(--border); }
+
+    /* ── Histogram ── */
+    .hist-wrap { display: flex; align-items: flex-end; gap: 4px; height: 100px; }
+    .hist-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .hist-bar { width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); min-height: 2px; transition: height 0.4s; }
+    .hist-cnt { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-bottom: 2px; min-height: 14px; }
+    .hist-lbl { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 4px; }
+
+    /* ── Day chart (historical) ── */
+    .day-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+    .day-col { flex: 1; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+    .day-col:hover .day-bar { opacity: 1; }
+    .day-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); opacity: 0.6; min-height: 3px; transition: all 0.3s; }
+    .day-bar.today { background: var(--success); opacity: 0.9; }
+    .day-cnt { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-bottom: 3px; }
+    .day-lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 4px; }
+
+    /* ── Cycle detail table ── */
+    .cycle-table { font-size: 12px; }
+    .cycle-table td { padding: 6px 10px; }
+    .cycle-table .piece-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cycle-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .cycle-status.completed { background: var(--success); }
+    .cycle-status.interrupted { background: var(--danger); }
+
+    /* ── Filter bar ── */
+    .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-end; flex-wrap: wrap; }
+    .filter-bar .form-group { flex: 1; min-width: 140px; margin-bottom: 0; }
+
+    /* ── Modal ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; align-items: center; justify-content: center; }
+    .modal-backdrop.active { display: flex; }
+    .modal { background: var(--surface); border-radius: 12px; padding: 24px; max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 16px; margin-bottom: 16px; }
+
+    /* ── Capacity planning ── */
+    .cap-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .cap-block { padding: 16px; background: var(--bg); border-radius: 8px; }
+    .cap-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); margin-bottom: 10px; }
+
+    @media (max-width: 768px) {
+      .container { padding: 12px; }
+      .metrics-row { grid-template-columns: 1fr 1fr; }
+      .cap-summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Producción</h1>
+  <span class="subtitle">CNC CX100</span>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('cola')" id="tab-cola">Cola</button>
+    <button class="nav-tab" onclick="switchTab('dia')" id="tab-dia">Día</button>
+    <button class="nav-tab" onclick="switchTab('historico')" id="tab-historico">Histórico</button>
+    <button class="nav-tab" onclick="switchTab('capacidad')" id="tab-capacidad">Capacidad</button>
+  </nav>
+  <div class="header-actions">
+    <a href="comercial.html" class="btn btn-secondary btn-sm" style="text-decoration:none">← Comercial</a>
+    <button class="dark-toggle" onclick="toggleDark()" title="Modo oscuro/claro">◐</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 1: COLA DE PRODUCCIÓN                  -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel active" id="panel-cola">
+
+  <div class="metrics-row" id="queueMetrics">
+    <div class="metric-card"><div class="metric-label">Pendientes</div><div class="metric-value" id="mPending">—</div></div>
+    <div class="metric-card"><div class="metric-label">En proceso</div><div class="metric-value" id="mInProgress">—</div></div>
+    <div class="metric-card"><div class="metric-label">Piezas CNC pendientes</div><div class="metric-value" id="mPiecesPending">—</div><div class="metric-sub" id="mPiecesPendingSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo CNC estimado</div><div class="metric-value" id="mTimePending">—</div><div class="metric-sub" id="mTimePendingSub"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      Cola de producción
+      <span class="badge" id="queueCount">0</span>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn btn-sm btn-secondary" onclick="recalcAll()">↻ Recalcular CNC</button>
+        <button class="btn btn-sm btn-primary" onclick="showAddModal()">+ Agregar servicio</button>
+        <button class="btn btn-sm btn-success" onclick="showAddFromQuoteModal()">+ Desde cotización</button>
+      </div>
+    </div>
+    
+    <div class="filter-bar">
+      <div class="form-group" style="flex:0 0 160px">
+        <label>Estado</label>
+        <select id="queueFilter" onchange="renderQueue()">
+          <option value="">Todos</option>
+          <option value="pending" selected>Pendientes</option>
+          <option value="in_progress">En proceso</option>
+          <option value="completed">Completados</option>
+          <option value="on_hold">En espera</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 160px">
+        <label>Buscar</label>
+        <input type="text" id="queueSearch" placeholder="Nombre, cliente..." oninput="renderQueue()">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th>Servicio</th>
+            <th>Estado</th>
+            <th style="text-align:center">Piezas CNC</th>
+            <th>Progreso CNC</th>
+            <th style="text-align:right">Est. CNC</th>
+            <th style="text-align:right">Real CNC</th>
+            <th style="text-align:right">Est. Corte</th>
+            <th style="text-align:right">Est. Enchape</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="queueBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="queueEmpty" style="display:none">No hay servicios en la cola</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 2: PANEL DEL DÍA                      -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-dia">
+  <div class="filter-bar" style="margin-bottom:16px">
+    <div class="form-group" style="flex:0 0 180px">
+      <label>Fecha</label>
+      <input type="date" id="dayDate" onchange="loadDayData()">
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="setDayToday()">Hoy</button>
+    <button class="btn btn-sm btn-secondary" onclick="shiftDay(-1)">← Ayer</button>
+    <button class="btn btn-sm btn-secondary" onclick="shiftDay(1)">Mañana →</button>
+  </div>
+
+  <div class="metrics-row" id="dayMetrics">
+    <div class="metric-card"><div class="metric-label">Piezas completadas</div><div class="metric-value" id="dPieces">—</div><div class="metric-sub" id="dPiecesSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo mecanizado</div><div class="metric-value" id="dTime">—</div><div class="metric-sub" id="dTimeSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Promedio / pieza</div><div class="metric-value" id="dAvg">—</div><div class="metric-sub" id="dAvgSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Utilización</div><div class="metric-value" id="dUtil">—</div></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div class="card">
+      <div class="card-title">Timeline</div>
+      <div class="timeline-container" id="dayTimeline"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Distribución de ciclos</div>
+      <div class="hist-wrap" id="dayHistogram"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Ciclos del día <span class="badge" id="dayCycleCount">0</span></div>
+    <div class="filter-bar">
+      <div class="form-group" style="flex:0 0 200px">
+        <label>Buscar pieza</label>
+        <input type="text" id="dayCycleSearch" placeholder="Nombre o ID..." oninput="renderDayCycles()">
+      </div>
+      <div class="form-group" style="flex:0 0 140px">
+        <label>Estado</label>
+        <select id="dayCycleFilter" onchange="renderDayCycles()">
+          <option value="">Todos</option>
+          <option value="completed">Completados</option>
+          <option value="interrupted">Interrumpidos</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap" style="max-height:400px; overflow-y:auto;">
+      <table class="cycle-table">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Pieza</th>
+            <th>Proyecto</th>
+            <th style="text-align:right">Duración</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>MobCloud ID</th>
+          </tr>
+        </thead>
+        <tbody id="dayCyclesBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 3: HISTÓRICO                           -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-historico">
+  <div class="metrics-row" id="histMetrics">
+    <div class="metric-card"><div class="metric-label">Días registrados</div><div class="metric-value" id="hDays">—</div></div>
+    <div class="metric-card"><div class="metric-label">Total piezas</div><div class="metric-value" id="hPieces">—</div></div>
+    <div class="metric-card"><div class="metric-label">Promedio/día</div><div class="metric-value" id="hAvgDay">—</div></div>
+    <div class="metric-card"><div class="metric-label">Promedio/pieza global</div><div class="metric-value" id="hAvgCycle">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Producción diaria (últimos 30 días)</div>
+    <div class="day-bars" id="histBars" style="height:140px"></div>
+    <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:12px; color:var(--text-3);">
+      <span>Click en un día para ver detalle</span>
+      <span id="histSummary"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Detalle por día</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th style="text-align:right">Completadas</th>
+            <th style="text-align:right">Interrumpidas</th>
+            <th style="text-align:right">Tiempo total</th>
+            <th style="text-align:right">Promedio</th>
+            <th style="text-align:right">Mediana</th>
+            <th style="text-align:right">Utilización</th>
+            <th>Rango</th>
+          </tr>
+        </thead>
+        <tbody id="histTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 4: CAPACIDAD                           -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-capacidad">
+  <div class="metrics-row">
+    <div class="metric-card"><div class="metric-label">Capacidad CNC/día</div><div class="metric-value" id="capPieces">—</div><div class="metric-sub">piezas promedio</div></div>
+    <div class="metric-card"><div class="metric-label">Mecanizado efectivo/día</div><div class="metric-value" id="capTime">—</div><div class="metric-sub" id="capTimeSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Promedio ciclo</div><div class="metric-value" id="capCycle">—</div></div>
+    <div class="metric-card"><div class="metric-label">Utilización promedio</div><div class="metric-value" id="capUtil">—</div></div>
+  </div>
+
+  <div class="cap-summary">
+    <div class="card">
+      <div class="card-title">Carga pendiente en CNC</div>
+      <div class="cap-block" id="capQueueBlock">
+        <div class="empty">Cargando...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Estimación de capacidad</div>
+      <div class="cap-block" id="capEstBlock">
+        <div class="empty">Cargando...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Estimación vs Realidad</div>
+    <p style="font-size:13px; color:var(--text-2); margin-bottom:12px;">Comparación entre la estimación fija (80s/pieza) y los datos reales de la CNC, basado en el histórico completo.</p>
+    <div id="capComparison"></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ═══════ MODALS ═══════ -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <h3>Agregar servicio a la cola</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Service ID (MobCloud)</label><input type="number" id="mServiceId"></div>
+      <div class="form-group"><label>Nombre</label><input type="text" id="mServiceName" placeholder="Ej: Cocina López"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cliente</label><input type="text" id="mClientName"></div>
+      <div class="form-group"><label>Fecha programada</label><input type="date" id="mScheduledDate"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Descripción</label><input type="text" id="mDescription" placeholder="Notas..."></div>
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeModal('addModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="addManualService()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="quoteModal">
+  <div class="modal">
+    <h3>Agregar desde cotización aceptada</h3>
+    <p style="font-size:13px; color:var(--text-2); margin-bottom:14px;">Seleccioná una cotización aceptada para agregar sus servicios a la cola de producción.</p>
+    <div id="quoteList" class="empty">Cargando cotizaciones...</div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeModal('quoteModal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+  <span id="loadingText" style="color:var(--text-2);font-size:14px">Cargando...</span>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+const SUPABASE_URL = "https://qnjizqowddtvzzfillmo.supabase.co";
+const SUPABASE_ANON = "sb_publishable_Agu_I1nw4mY1qRARQBbaHQ_6lTWsFTh";
+const APP_KEY = "";
+const MACHINE_ID = "cx100";
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+const qs = s => document.querySelector(s);
+const qa = s => document.querySelectorAll(s);
+
+function fmtSec(s) { if (s==null) return "—"; s=Math.round(s); return s>=60?`${Math.floor(s/60)}m ${s%60}s`:`${s}s`; }
+function fmtMin(s) { if (s==null) return "—"; const m=Math.round(s/60); return m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m} min`; }
+function fmtMinFromMin(m) { if (m==null) return "—"; m=Math.round(m); return m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m} min`; }
+function fmtTime(iso) { if (!iso) return "—"; return new Date(iso).toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}); }
+function fmtTimeShort(iso) { if (!iso) return ""; return new Date(iso).toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit",hour12:false}); }
+function cleanName(n) { return (n||"").replace(/^\[J\]\s*/,""); }
+function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function escH(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+
+const DAY_NAMES = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+async function sbQuery(table, params="") {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: { "apikey":SUPABASE_ANON, "Authorization":`Bearer ${SUPABASE_ANON}`, "Accept":"application/json" }
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+async function invokeFunction(name, payload) {
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+    method:"POST",
+    headers: { "Content-Type":"application/json", "apikey":SUPABASE_ANON, "Authorization":`Bearer ${SUPABASE_ANON}` },
+    body: JSON.stringify(payload)
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || data.message || r.statusText);
+  return data;
+}
+
+function toast(msg, type="info") {
+  const t = document.createElement("div");
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  qs("#toastContainer").appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function showLoading(msg="Cargando...") { qs("#loadingText").textContent=msg; qs("#loadingOverlay").classList.add("active"); }
+function hideLoading() { qs("#loadingOverlay").classList.remove("active"); }
+function showModal(id) { document.getElementById(id).classList.add("active"); }
+function closeModal(id) { document.getElementById(id).classList.remove("active"); }
+
+function toggleDark() {
+  document.documentElement.classList.toggle("dark");
+  localStorage.setItem("dark", document.documentElement.classList.contains("dark"));
+}
+if (localStorage.getItem("dark")==="true") document.documentElement.classList.add("dark");
+
+// ══════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════
+let currentTab = "cola";
+function switchTab(tab) {
+  currentTab = tab;
+  qa(".nav-tab").forEach(t => t.classList.remove("active"));
+  qa(".tab-panel").forEach(p => p.classList.remove("active"));
+  qs(`#tab-${tab}`).classList.add("active");
+  qs(`#panel-${tab}`).classList.add("active");
+  
+  if (tab === "cola") loadQueue();
+  if (tab === "dia") loadDayData();
+  if (tab === "historico") loadHistorical();
+  if (tab === "capacidad") loadCapacity();
+}
+
+// ══════════════════════════════════════════════
+// TAB 1: COLA DE PRODUCCIÓN
+// ══════════════════════════════════════════════
+let queueData = [];
+
+async function loadQueue() {
+  try {
+    queueData = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
+    renderQueue();
+  } catch(e) { toast(e.message,"error"); }
+}
+
+function renderQueue() {
+  const filter = qs("#queueFilter").value;
+  const search = qs("#queueSearch").value.toLowerCase();
+  let items = queueData;
+  if (filter) items = items.filter(i => i.status === filter);
+  if (search) items = items.filter(i => 
+    (i.service_name||"").toLowerCase().includes(search) || 
+    (i.client_name||"").toLowerCase().includes(search) ||
+    String(i.service_id).includes(search)
+  );
+
+  qs("#queueCount").textContent = items.length;
+  qs("#queueEmpty").style.display = items.length ? "none" : "block";
+
+  // Metrics
+  const pending = queueData.filter(i => i.status==="pending" || i.status==="in_progress");
+  const piecesPending = pending.reduce((s,i) => s + Math.max(0, (i.parts_with_machining||0) - (i.cnc_parts_done||0)), 0);
+  const timePendingSec = piecesPending * 75;
+  qs("#mPending").textContent = queueData.filter(i=>i.status==="pending").length;
+  qs("#mInProgress").textContent = queueData.filter(i=>i.status==="in_progress").length;
+  qs("#mPiecesPending").textContent = piecesPending;
+  qs("#mPiecesPendingSub").textContent = `de ${pending.reduce((s,i)=>s+(i.parts_with_machining||0),0)} totales`;
+  qs("#mTimePending").textContent = fmtMin(timePendingSec);
+  qs("#mTimePendingSub").textContent = `~${Math.ceil(piecesPending / 184)} días hábiles`;
+
+  const tbody = qs("#queueBody");
+  tbody.innerHTML = items.map((item, idx) => {
+    const pct = item.cnc_progress_pct || 0;
+    const barClass = pct >= 100 ? "green" : pct > 0 ? "blue" : "";
+    const cncEst = item.cnc_time_est_min ? fmtMinFromMin(item.cnc_time_est_min) : "—";
+    const cncReal = item.cnc_total_seconds > 0 ? fmtMin(item.cnc_total_seconds) : "—";
+    const cutEst = item.cutting_time_est > 0 ? fmtMinFromMin(item.cutting_time_est) : "—";
+    const edgeEst = item.edge_time_est_min ? fmtMinFromMin(item.edge_time_est_min) : "—";
+    
+    return `<tr data-id="${item.id}">
+      <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">${idx+1}</td>
+      <td>
+        <div class="svc-name">${escH(item.service_name||"")} <span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">#${item.service_id}</span></div>
+        ${item.client_name ? `<div class="svc-client">${escH(item.client_name)}</div>` : ""}
+        ${item.description ? `<div class="svc-desc">${escH(item.description)}</div>` : ""}
+      </td>
+      <td><span class="status status-${item.status}">${statusLabel(item.status)}</span></td>
+      <td style="text-align:center;font-family:var(--mono)">${item.cnc_parts_done||0} / ${item.parts_with_machining||0}</td>
+      <td style="min-width:120px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar" style="flex:1"><div class="progress-fill ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text-2);min-width:36px">${pct}%</span>
+        </div>
+      </td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${cncEst}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px;${item.cnc_total_seconds>0?"font-weight:600;color:var(--accent)":""}">${cncReal}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${cutEst}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${edgeEst}</td>
+      <td style="font-size:12px">${item.scheduled_date||"—"}</td>
+      <td class="queue-actions">
+        <select onchange="updateStatus('${item.id}',this.value)" style="width:auto;padding:3px 6px;font-size:11px">
+          ${["pending","in_progress","completed","on_hold"].map(s => `<option value="${s}" ${s===item.status?"selected":""}>${statusLabel(s)}</option>`).join("")}
+        </select>
+        <button class="btn btn-sm btn-secondary" onclick="removeFromQueue('${item.id}')" title="Quitar">✕</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function statusLabel(s) {
+  return {pending:"Pendiente",in_progress:"En proceso",completed:"Completado",on_hold:"En espera"}[s]||s;
+}
+
+async function updateStatus(id, status) {
+  try {
+    await invokeFunction("production-service", { action:"update", id, status });
+    toast(`Estado → ${statusLabel(status)}`,"success");
+    loadQueue();
+  } catch(e) { toast(e.message,"error"); }
+}
+
+async function removeFromQueue(id) {
+  if (!confirm("¿Quitar este servicio de la cola?")) return;
+  try {
+    await invokeFunction("production-service", { action:"remove", id });
+    toast("Servicio quitado","info");
+    loadQueue();
+  } catch(e) { toast(e.message,"error"); }
+}
+
+async function recalcAll() {
+  showLoading("Recalculando progreso CNC...");
+  try {
+    const r = await invokeFunction("production-service", { action:"recalc" });
+    toast(`Recalculados: ${r.recalculated?.length || 0} servicios`,"success");
+    loadQueue();
+  } catch(e) { toast(e.message,"error"); }
+  finally { hideLoading(); }
+}
+
+function showAddModal() { showModal("addModal"); }
+
+async function addManualService() {
+  const sid = qs("#mServiceId").value;
+  if (!sid) { toast("Ingresá el Service ID","error"); return; }
+  showLoading("Agregando...");
+  try {
+    await invokeFunction("production-service", {
+      action: "add-manual",
+      service_id: parseInt(sid),
+      service_name: qs("#mServiceName").value,
+      client_name: qs("#mClientName").value,
+      description: qs("#mDescription").value,
+      scheduled_date: qs("#mScheduledDate").value || null,
+    });
+    toast("Servicio agregado","success");
+    closeModal("addModal");
+    loadQueue();
+  } catch(e) { toast(e.message,"error"); }
+  finally { hideLoading(); }
+}
+
+async function showAddFromQuoteModal() {
+  showModal("quoteModal");
+  const list = qs("#quoteList");
+  list.innerHTML = '<div class="empty"><div class="spinner"></div> Cargando...</div>';
+  
+  try {
+    const quotes = await sbQuery("quotes", "status=eq.accepted&order=created_at.desc&limit=20&select=id,referencia,client_name,grand_total,currency,created_at");
+    if (!quotes.length) {
+      list.innerHTML = '<div class="empty">No hay cotizaciones aceptadas</div>';
+      return;
+    }
+    list.innerHTML = quotes.map(q => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div>
+          <div style="font-weight:600;font-size:14px">${escH(q.referencia||"")} — ${escH(q.client_name||"Sin cliente")}</div>
+          <div style="font-size:12px;color:var(--text-3)">${new Date(q.created_at).toLocaleDateString("es-UY")}</div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="addFromQuote('${q.id}')">Agregar</button>
+      </div>
+    `).join("");
+  } catch(e) {
+    list.innerHTML = `<div class="empty">${e.message}</div>`;
+  }
+}
+
+async function addFromQuote(quoteId) {
+  showLoading("Agregando servicios...");
+  try {
+    const r = await invokeFunction("production-service", { action:"add-from-quote", quote_id: quoteId });
+    toast(`Agregados: ${r.added} servicios`,"success");
+    closeModal("quoteModal");
+    loadQueue();
+  } catch(e) { toast(e.message,"error"); }
+  finally { hideLoading(); }
+}
+
+// ══════════════════════════════════════════════
+// TAB 2: PANEL DEL DÍA
+// ══════════════════════════════════════════════
+let dayCycles = [];
+let dayStats = null;
+
+function setDayToday() { qs("#dayDate").value = todayStr(); loadDayData(); }
+function shiftDay(dir) {
+  const d = new Date(qs("#dayDate").value + "T12:00:00");
+  d.setDate(d.getDate() + dir);
+  qs("#dayDate").value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  loadDayData();
+}
+
+async function loadDayData() {
+  if (!qs("#dayDate").value) qs("#dayDate").value = todayStr();
+  const date = qs("#dayDate").value;
+  try {
+    [dayCycles, dayStats] = await Promise.all([
+      sbQuery("cnc_cycles", `machine_id=eq.${MACHINE_ID}&log_date=eq.${date}&order=started_at.desc`),
+      sbQuery("cnc_daily_stats", `machine_id=eq.${MACHINE_ID}&log_date=eq.${date}`).then(a => a[0] || null),
+    ]);
+    renderDayMetrics();
+    renderDayTimeline();
+    renderDayHistogram();
+    renderDayCycles();
+  } catch(e) { toast(e.message,"error"); }
+}
+
+function renderDayMetrics() {
+  if (!dayStats) {
+    ["dPieces","dTime","dAvg","dUtil"].forEach(id => qs(`#${id}`).textContent = "—");
+    qs("#dPiecesSub").textContent = ""; qs("#dTimeSub").textContent = ""; qs("#dAvgSub").textContent = "";
+    return;
+  }
+  qs("#dPieces").textContent = dayStats.completed_cycles || 0;
+  qs("#dPiecesSub").textContent = dayStats.interrupted_cycles > 0 ? `+ ${dayStats.interrupted_cycles} interrumpidas` : "";
+  qs("#dTime").textContent = fmtMin(dayStats.total_machining_seconds);
+  qs("#dTimeSub").textContent = `${dayStats.unique_programs||0} programas únicos`;
+  qs("#dAvg").textContent = fmtSec(dayStats.avg_cycle_seconds);
+  qs("#dAvgSub").textContent = `mediana: ${fmtSec(dayStats.median_cycle_seconds)}`;
+  qs("#dUtil").textContent = `${dayStats.utilization_pct||0}%`;
+}
+
+function renderDayTimeline() {
+  const c = qs("#dayTimeline");
+  const completed = dayCycles.filter(x => x.started_at && x.ended_at);
+  if (!completed.length) { c.innerHTML = `<div class="empty" style="padding:10px">Sin datos</div>`; return; }
+
+  const dayStart = new Date(completed[completed.length-1].started_at);
+  dayStart.setHours(7,0,0,0);
+  const dayEnd = new Date(completed[0].ended_at);
+  dayEnd.setHours(Math.max(dayEnd.getHours()+1, 18),0,0,0);
+  const rangeMs = dayEnd - dayStart;
+
+  let html = "";
+  for (let h=dayStart.getHours(); h<=dayEnd.getHours(); h++) {
+    const t = new Date(dayStart); t.setHours(h,0,0,0);
+    const pct = (t - dayStart) / rangeMs * 100;
+    if (pct >= 0 && pct <= 100) html += `<div class="tl-grid" style="left:${pct}%"></div>`;
+  }
+
+  completed.forEach(x => {
+    const s = new Date(x.started_at).getTime(), e = new Date(x.ended_at).getTime();
+    const left = Math.max(0, (s - dayStart) / rangeMs * 100);
+    const width = Math.max(0.3, (e - s) / rangeMs * 100);
+    html += `<div class="tl-bar ${x.status}" style="left:${left}%;width:${width}%" title="${cleanName(x.piece_name)} — ${fmtSec(x.duration_seconds)}"></div>`;
+  });
+
+  html += `<div class="tl-axis">`;
+  for (let h=dayStart.getHours(); h<=dayEnd.getHours(); h++) html += `<span>${String(h).padStart(2,"0")}:00</span>`;
+  html += `</div>`;
+  c.innerHTML = html;
+}
+
+function renderDayHistogram() {
+  const c = qs("#dayHistogram");
+  const completed = dayCycles.filter(x => x.status==="completed");
+  if (!completed.length) { c.innerHTML = `<div class="empty" style="width:100%">Sin datos</div>`; return; }
+
+  const buckets = [{min:0,max:30,l:"<30s"},{min:30,max:60,l:"30-60"},{min:60,max:90,l:"60-90"},{min:90,max:120,l:"90-120"},{min:120,max:180,l:"2-3m"},{min:180,max:300,l:"3-5m"},{min:300,max:Infinity,l:">5m"}];
+  const counts = buckets.map(b => ({...b, n: completed.filter(x => x.duration_seconds >= b.min && x.duration_seconds < b.max).length}));
+  const maxN = Math.max(...counts.map(x=>x.n), 1);
+
+  c.innerHTML = counts.map(b => `
+    <div class="hist-col">
+      <div class="hist-cnt">${b.n||""}</div>
+      <div class="hist-bar" style="height:${(b.n/maxN)*90}px"></div>
+      <div class="hist-lbl">${b.l}</div>
+    </div>
+  `).join("");
+}
+
+function renderDayCycles() {
+  const search = (qs("#dayCycleSearch").value||"").toLowerCase();
+  const filter = qs("#dayCycleFilter").value;
+  let items = dayCycles;
+  if (filter) items = items.filter(x => x.status === filter);
+  if (search) items = items.filter(x => 
+    cleanName(x.piece_name).toLowerCase().includes(search) || 
+    String(x.mob_part_id||"").includes(search) ||
+    (x.project_folder||"").toLowerCase().includes(search)
+  );
+  qs("#dayCycleCount").textContent = items.length;
+
+  qs("#dayCyclesBody").innerHTML = items.map(x => `
+    <tr>
+      <td><span class="cycle-status ${x.status}"></span></td>
+      <td class="piece-name" title="${escH(cleanName(x.piece_name))}">${escH(cleanName(x.piece_name))}</td>
+      <td style="font-size:12px;color:var(--text-2)">${escH(x.project_folder||"—")}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:${x.status==='completed'?600:400}">${fmtSec(x.duration_seconds)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtTime(x.started_at)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtTime(x.ended_at)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${x.mob_part_id||"—"}</td>
+    </tr>
+  `).join("");
+}
+
+// ══════════════════════════════════════════════
+// TAB 3: HISTÓRICO
+// ══════════════════════════════════════════════
+let histData = [];
+
+async function loadHistorical() {
+  try {
+    histData = await sbQuery("cnc_daily_stats", `machine_id=eq.${MACHINE_ID}&order=log_date.desc&limit=30`);
+    renderHistorical();
+  } catch(e) { toast(e.message,"error"); }
+}
+
+function renderHistorical() {
+  if (!histData.length) return;
+
+  const sorted = [...histData].sort((a,b) => a.log_date.localeCompare(b.log_date));
+  const totalPieces = sorted.reduce((s,d) => s + (d.completed_cycles||0), 0);
+  const avgDay = Math.round(totalPieces / sorted.length);
+  const avgCycle = Math.round(sorted.reduce((s,d) => s + (d.avg_cycle_seconds||0), 0) / sorted.length);
+
+  qs("#hDays").textContent = sorted.length;
+  qs("#hPieces").textContent = totalPieces.toLocaleString();
+  qs("#hAvgDay").textContent = avgDay;
+  qs("#hAvgCycle").textContent = fmtSec(avgCycle);
+
+  // Bar chart
+  const maxP = Math.max(...sorted.map(d => d.completed_cycles||0), 1);
+  qs("#histBars").innerHTML = sorted.map(d => {
+    const h = ((d.completed_cycles||0) / maxP) * 120;
+    const date = new Date(d.log_date + "T12:00:00");
+    const isToday = d.log_date === todayStr();
+    return `
+      <div class="day-col" onclick="goToDay('${d.log_date}')" title="${d.log_date}: ${d.completed_cycles} piezas, avg ${Math.round(d.avg_cycle_seconds)}s">
+        <div class="day-cnt">${d.completed_cycles}</div>
+        <div class="day-bar${isToday?" today":""}" style="height:${h}px"></div>
+        <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${DAY_NAMES[date.getDay()]}</div>
+        <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${date.getDate()}</div>
+      </div>
+    `;
+  }).join("");
+
+  qs("#histSummary").textContent = `Total: ${totalPieces} piezas — Prom: ${avgDay}/día — Ciclo: ${avgCycle}s`;
+
+  // Table
+  qs("#histTableBody").innerHTML = [...histData].map(d => `
+    <tr style="cursor:pointer" onclick="goToDay('${d.log_date}')">
+      <td style="font-weight:600">${d.log_date}</td>
+      <td style="text-align:right;font-family:var(--mono)">${d.completed_cycles}</td>
+      <td style="text-align:right;font-family:var(--mono);color:${d.interrupted_cycles>0?"var(--danger)":"var(--text-3)"}">${d.interrupted_cycles}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtMin(d.total_machining_seconds)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtSec(d.avg_cycle_seconds)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtSec(d.median_cycle_seconds)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${d.utilization_pct||0}%</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${fmtTimeShort(d.first_cycle_at)} — ${fmtTimeShort(d.last_cycle_at)}</td>
+    </tr>
+  `).join("");
+}
+
+function goToDay(date) {
+  qs("#dayDate").value = date;
+  switchTab("dia");
+}
+
+// ══════════════════════════════════════════════
+// TAB 4: CAPACIDAD
+// ══════════════════════════════════════════════
+
+async function loadCapacity() {
+  try {
+    const [cap, queue] = await Promise.all([
+      invokeFunction("production-service", { action:"capacity" }),
+      sbQuery("production_queue_status", "status=in.(pending,in_progress)&order=priority.asc"),
+    ]);
+
+    qs("#capPieces").textContent = cap.avg_pieces_per_day || "—";
+    qs("#capTime").textContent = fmtMinFromMin(cap.avg_machining_min_per_day);
+    qs("#capTimeSub").textContent = `basado en ${cap.days_count} días`;
+    qs("#capCycle").textContent = fmtSec(cap.avg_cycle_seconds);
+    qs("#capUtil").textContent = `${cap.utilization_avg||0}%`;
+
+    // Queue load
+    const totalPieces = queue.reduce((s,i) => s + Math.max(0, (i.parts_with_machining||0) - (i.cnc_parts_done||0)), 0);
+    const totalCutMin = queue.reduce((s,i) => s + (i.cutting_time_est||0), 0);
+    const totalEdgeMin = queue.reduce((s,i) => s + (i.edge_time_est_min||0), 0);
+    const totalCncMin = Math.round(totalPieces * (cap.avg_cycle_seconds||75) / 60);
+    const daysNeeded = cap.avg_pieces_per_day > 0 ? Math.ceil(totalPieces / cap.avg_pieces_per_day) : "?";
+
+    qs("#capQueueBlock").innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><span style="font-size:12px;color:var(--text-3)">Servicios pendientes</span><div style="font-family:var(--mono);font-size:24px;font-weight:700">${queue.length}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Piezas CNC pendientes</span><div style="font-family:var(--mono);font-size:24px;font-weight:700">${totalPieces}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Tiempo CNC estimado</span><div style="font-family:var(--mono);font-size:18px;font-weight:600">${fmtMinFromMin(totalCncMin)}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Tiempo corte estimado</span><div style="font-family:var(--mono);font-size:18px;font-weight:600">${fmtMinFromMin(totalCutMin)}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Tiempo enchape estimado</span><div style="font-family:var(--mono);font-size:18px;font-weight:600">${fmtMinFromMin(totalEdgeMin)}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Días hábiles estimados</span><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--accent)">${daysNeeded}</div></div>
+      </div>
+    `;
+
+    qs("#capEstBlock").innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><span style="font-size:12px;color:var(--text-3)">Capacidad CNC/día</span><div style="font-family:var(--mono);font-size:24px;font-weight:700">${cap.avg_pieces_per_day} pzas</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Mecanizado efectivo/día</span><div style="font-family:var(--mono);font-size:24px;font-weight:700">${fmtMinFromMin(cap.avg_machining_min_per_day)}</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Utilización promedio</span><div style="font-family:var(--mono);font-size:18px;font-weight:600">${cap.utilization_avg}%</div></div>
+        <div><span style="font-size:12px;color:var(--text-3)">Ciclo promedio real</span><div style="font-family:var(--mono);font-size:18px;font-weight:600">${fmtSec(cap.avg_cycle_seconds)}</div></div>
+      </div>
+      <div style="margin-top:14px;padding:10px;background:var(--surface);border-radius:6px;font-size:13px;color:var(--text-2);">
+        <strong>Nota:</strong> El promedio real (${cap.avg_cycle_seconds}s/pieza) vs la estimación fija (80s/pieza) 
+        da un error del <strong>${cap.avg_cycle_seconds ? Math.round((cap.avg_cycle_seconds/80 - 1)*100) : 0}%</strong>. 
+        Las estimaciones en la cola usan el promedio real.
+      </div>
+    `;
+
+    // Comparison
+    renderComparison(cap);
+
+  } catch(e) { toast(e.message,"error"); }
+}
+
+function renderComparison(cap) {
+  const c = qs("#capComparison");
+  const realAvg = cap.avg_cycle_seconds || 75;
+  const fixedEst = 80;
+  const diff = realAvg - fixedEst;
+  const diffPct = ((realAvg / fixedEst) - 1) * 100;
+
+  c.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;">
+      <div style="padding:16px;background:var(--bg);border-radius:8px;">
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Estimación fija</div>
+        <div style="font-family:var(--mono);font-size:32px;font-weight:700">80s</div>
+        <div style="font-size:12px;color:var(--text-3)">por pieza</div>
+      </div>
+      <div style="padding:16px;background:var(--bg);border-radius:8px;">
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Promedio real</div>
+        <div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--accent)">${Math.round(realAvg)}s</div>
+        <div style="font-size:12px;color:var(--text-3)">por pieza (${cap.days_count} días)</div>
+      </div>
+      <div style="padding:16px;background:${diffPct>10?'var(--danger)':diffPct<-10?'var(--success)':'var(--warn)'};border-radius:8px;color:white;">
+        <div style="font-size:12px;opacity:.8;margin-bottom:8px">Diferencia</div>
+        <div style="font-family:var(--mono);font-size:32px;font-weight:700">${diffPct>0?"+":""}${Math.round(diffPct)}%</div>
+        <div style="font-size:12px;opacity:.8">${diff>0?"Real más lento":"Real más rápido"}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+loadQueue();
+qs("#dayDate").value = todayStr();
+</script>
+</body>
+</html>
