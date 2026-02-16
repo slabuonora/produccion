@@ -188,6 +188,7 @@
     <button class="nav-tab" onclick="switchTab('dia')" id="tab-dia">Día</button>
     <button class="nav-tab" onclick="switchTab('historico')" id="tab-historico">Histórico</button>
     <button class="nav-tab" onclick="switchTab('capacidad')" id="tab-capacidad">Capacidad</button>
+    <button class="nav-tab" onclick="switchTab('prepacking')" id="tab-prepacking">Pre Packing</button>
   </nav>
   <div class="header-actions">
     <a href="https://comercial-4xh.pages.dev/" class="btn btn-secondary btn-sm" style="text-decoration:none">← Comercial</a>
@@ -460,6 +461,53 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 5: PRE PACKING                         -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-prepacking">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h3 style="font-size:18px;font-weight:700;margin:0">Control Pre Packing</h3>
+      <p style="font-size:13px;color:var(--text-2);margin-top:2px">Verificación de piezas por servicio antes del embalaje</p>
+    </div>
+    <a href="prepacking.html" target="_blank" class="btn btn-primary" style="text-decoration:none;font-size:14px;padding:10px 20px">
+      ↗ Abrir Escáner (ventana completa)
+    </a>
+  </div>
+
+  <div class="metrics-row" id="ppMetrics">
+    <div class="metric-card"><div class="metric-label">Servicios con partes</div><div class="metric-value" id="ppServices">—</div></div>
+    <div class="metric-card"><div class="metric-label">En proceso de scan</div><div class="metric-value" id="ppInProgress">—</div></div>
+    <div class="metric-card"><div class="metric-label">Completos</div><div class="metric-value" id="ppComplete">—</div></div>
+    <div class="metric-card"><div class="metric-label">Piezas escaneadas hoy</div><div class="metric-value" id="ppToday">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      Estado por servicio
+      <button class="btn btn-sm btn-secondary" onclick="loadPrePacking()">↻ Actualizar</button>
+    </div>
+    <div class="table-wrap" style="max-height:500px;overflow-y:auto">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th>Servicio</th>
+            <th>Cliente</th>
+            <th style="text-align:center">Piezas</th>
+            <th style="text-align:center">Escaneadas</th>
+            <th style="text-align:center">Faltantes</th>
+            <th>Progreso</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ppBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="ppEmpty" style="display:none">No hay servicios con partes cacheadas. Sincronizá servicios en Comercial.</div>
+  </div>
+</div>
+
 </div><!-- /container -->
 
 <!-- ═══════ MODALS ═══════ -->
@@ -582,6 +630,7 @@ function switchTab(tab) {
   if (tab === "dia") loadDayData();
   if (tab === "historico") loadHistorical();
   if (tab === "capacidad") loadCapacity();
+  if (tab === "prepacking") loadPrePacking();
 }
 
 // ══════════════════════════════════════════════
@@ -1311,6 +1360,81 @@ function renderComparison(cap) {
       </div>
     </div>
   `;
+}
+
+// ══════════════════════════════════════════════
+// TAB 5: PRE PACKING
+// ══════════════════════════════════════════════
+async function loadPrePacking() {
+  try {
+    // Service-level progress from packing views
+    let ppData = [];
+    try {
+      const res = await sbQuery("vw_packing_service_progress", "order=service_id.desc");
+      ppData = res || [];
+    } catch (e) {
+      console.warn("Packing views not ready:", e.message);
+    }
+
+    // Also get service names from the mapping
+    let svcMap = {};
+    try {
+      const svcData = await sbQuery("cnc_part_service_map", "select=service_id,service_name,client_name,quote_ref&limit=10000");
+      for (const r of svcData || []) {
+        if (!svcMap[r.service_id]) svcMap[r.service_id] = r;
+      }
+    } catch (e) {}
+
+    // Get today's scan count
+    const todayStart = todayStr() + "T00:00:00";
+    let todayScans = 0;
+    try {
+      const scans = await sbQuery("packing_scans", `scanned_at=gte.${todayStart}&select=id`);
+      todayScans = scans?.length || 0;
+    } catch (e) {}
+
+    // Metrics
+    const total = ppData.length;
+    const inProgress = ppData.filter(s => +s.scanned > 0 && !s.complete).length;
+    const complete = ppData.filter(s => s.complete).length;
+    
+    qs("#ppServices").textContent = total;
+    qs("#ppInProgress").textContent = inProgress;
+    qs("#ppComplete").textContent = complete;
+    qs("#ppToday").textContent = todayScans;
+
+    // Table
+    const tbody = qs("#ppBody");
+    qs("#ppEmpty").style.display = ppData.length ? "none" : "block";
+
+    tbody.innerHTML = ppData.map(s => {
+      const svc = svcMap[s.service_id] || {};
+      const exp = +s.expected || 0;
+      const sc = +s.scanned || 0;
+      const mis = +s.missing || 0;
+      const pct = exp > 0 ? Math.round(sc / exp * 100) : 0;
+      const barClass = pct >= 100 ? "green" : pct > 0 ? "blue" : "";
+
+      return `<tr>
+        <td><div style="font-weight:600">${escH(svc.service_name || "Servicio " + s.service_id)}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-3)">#${s.service_id}${svc.quote_ref?" — "+escH(svc.quote_ref):""}</div></td>
+        <td style="font-size:12px">${escH(svc.client_name || "")}</td>
+        <td style="text-align:center;font-family:var(--mono)">${exp}</td>
+        <td style="text-align:center;font-family:var(--mono)">${sc}</td>
+        <td style="text-align:center;font-family:var(--mono);${mis>0?"color:var(--danger);font-weight:700":""}">${mis}</td>
+        <td style="min-width:110px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="progress-bar" style="flex:1"><div class="progress-fill ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
+            <span style="font-family:var(--mono);font-size:11px;min-width:32px">${pct}%</span>
+          </div>
+        </td>
+        <td><a href="prepacking.html" target="_blank" class="btn btn-sm btn-secondary" style="text-decoration:none;font-size:11px">Escanear ↗</a></td>
+      </tr>`;
+    }).join("");
+  } catch (e) {
+    console.error("loadPrePacking:", e);
+    toast(e.message, "error");
+  }
 }
 
 // ══════════════════════════════════════════════
