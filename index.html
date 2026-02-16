@@ -477,10 +477,10 @@
   </div>
 
   <div class="metrics-row" id="ppMetrics">
-    <div class="metric-card"><div class="metric-label">Servicios con partes</div><div class="metric-value" id="ppServices">—</div></div>
-    <div class="metric-card"><div class="metric-label">En proceso de scan</div><div class="metric-value" id="ppInProgress">—</div></div>
+    <div class="metric-card"><div class="metric-label">En producción (MobCloud)</div><div class="metric-value" id="ppServices">—</div></div>
+    <div class="metric-card"><div class="metric-label">Scan en proceso</div><div class="metric-value" id="ppInProgress">—</div></div>
     <div class="metric-card"><div class="metric-label">Completos</div><div class="metric-value" id="ppComplete">—</div></div>
-    <div class="metric-card"><div class="metric-label">Piezas escaneadas hoy</div><div class="metric-value" id="ppToday">—</div></div>
+    <div class="metric-card"><div class="metric-label">Scans hoy</div><div class="metric-value" id="ppToday">—</div></div>
   </div>
 
   <div class="card">
@@ -494,7 +494,7 @@
           <tr>
             <th>Servicio</th>
             <th>Cliente</th>
-            <th style="text-align:center">Piezas</th>
+            <th style="text-align:center">Esperadas</th>
             <th style="text-align:center">Escaneadas</th>
             <th style="text-align:center">Faltantes</th>
             <th>Progreso</th>
@@ -504,7 +504,7 @@
         <tbody id="ppBody"></tbody>
       </table>
     </div>
-    <div class="empty" id="ppEmpty" style="display:none">No hay servicios con partes cacheadas. Sincronizá servicios en Comercial.</div>
+    <div class="empty" id="ppEmpty" style="display:none">No hay servicios en producción, o no se pudo conectar con MobCloud.</div>
   </div>
 </div>
 
@@ -1367,25 +1367,23 @@ function renderComparison(cap) {
 // ══════════════════════════════════════════════
 async function loadPrePacking() {
   try {
-    // Service-level progress from packing views
-    let ppData = [];
+    // Get production list from MobCloud
+    let prodServices = [];
     try {
-      const res = await sbQuery("vw_packing_service_progress", "order=service_id.desc");
-      ppData = res || [];
+      prodServices = await invokeFunction("production-service", { action: "list-production" });
     } catch (e) {
-      console.warn("Packing views not ready:", e.message);
+      console.warn("Production list not available:", e.message);
     }
 
-    // Also get service names from the mapping
-    let svcMap = {};
+    // Get packing progress from local views
+    let ppData = [];
     try {
-      const svcData = await sbQuery("cnc_part_service_map", "select=service_id,service_name,client_name,quote_ref&limit=10000");
-      for (const r of svcData || []) {
-        if (!svcMap[r.service_id]) svcMap[r.service_id] = r;
-      }
-    } catch (e) {}
+      ppData = await sbQuery("vw_packing_service_progress", "order=service_id.desc");
+    } catch (e) { console.warn("Packing views not ready:", e.message); }
+    const ppMap = {};
+    for (const p of ppData) ppMap[p.service_id] = p;
 
-    // Get today's scan count
+    // Today's scan count
     const todayStart = todayStr() + "T00:00:00";
     let todayScans = 0;
     try {
@@ -1393,10 +1391,17 @@ async function loadPrePacking() {
       todayScans = scans?.length || 0;
     } catch (e) {}
 
+    // Merge: production services + packing progress
+    const merged = prodServices.map(s => {
+      const pp = ppMap[s.service_id] || {};
+      return { ...s, expected: +(pp.expected||0), scanned: +(pp.scanned||0), missing: +(pp.missing||0), complete: !!pp.complete };
+    });
+
     // Metrics
-    const total = ppData.length;
-    const inProgress = ppData.filter(s => +s.scanned > 0 && !s.complete).length;
-    const complete = ppData.filter(s => s.complete).length;
+    const total = merged.length;
+    const withParts = merged.filter(s => s.has_parts_cached).length;
+    const inProgress = merged.filter(s => s.scanned > 0 && !s.complete).length;
+    const complete = merged.filter(s => s.complete).length;
     
     qs("#ppServices").textContent = total;
     qs("#ppInProgress").textContent = inProgress;
@@ -1405,28 +1410,40 @@ async function loadPrePacking() {
 
     // Table
     const tbody = qs("#ppBody");
-    qs("#ppEmpty").style.display = ppData.length ? "none" : "block";
+    qs("#ppEmpty").style.display = merged.length ? "none" : "block";
 
-    tbody.innerHTML = ppData.map(s => {
-      const svc = svcMap[s.service_id] || {};
-      const exp = +s.expected || 0;
-      const sc = +s.scanned || 0;
-      const mis = +s.missing || 0;
+    tbody.innerHTML = merged.map(s => {
+      const exp = s.expected || 0;
+      const sc = s.scanned || 0;
+      const mis = s.missing || 0;
       const pct = exp > 0 ? Math.round(sc / exp * 100) : 0;
       const barClass = pct >= 100 ? "green" : pct > 0 ? "blue" : "";
+      const name = s.internal_code || "Servicio " + s.service_id;
+      const partsIcon = s.has_parts_cached ? "✓" : "⚠";
+      const partsColor = s.has_parts_cached ? "var(--success)" : "var(--warn)";
+
+      // Step badges
+      const stepBadge = (val, label) => val 
+        ? `<span style="font-size:10px;color:var(--success)">✓${label}</span>` 
+        : `<span style="font-size:10px;color:var(--text-3)">·${label}</span>`;
 
       return `<tr>
-        <td><div style="font-weight:600">${escH(svc.service_name || "Servicio " + s.service_id)}</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-3)">#${s.service_id}${svc.quote_ref?" — "+escH(svc.quote_ref):""}</div></td>
-        <td style="font-size:12px">${escH(svc.client_name || "")}</td>
-        <td style="text-align:center;font-family:var(--mono)">${exp}</td>
-        <td style="text-align:center;font-family:var(--mono)">${sc}</td>
-        <td style="text-align:center;font-family:var(--mono);${mis>0?"color:var(--danger);font-weight:700":""}">${mis}</td>
+        <td>
+          <div style="font-weight:600">${escH(name)}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-3)">#${s.service_id} <span style="color:${partsColor}">${partsIcon} partes</span></div>
+          <div style="margin-top:3px;display:flex;gap:6px">
+            ${stepBadge(s.step_cut,"Corte")} ${stepBadge(s.step_edge,"Enchape")} ${stepBadge(s.step_machining,"CNC")} ${stepBadge(s.step_packing,"Pack")}
+          </div>
+        </td>
+        <td style="font-size:12px">${escH(s.client_name || "")}</td>
+        <td style="text-align:center;font-family:var(--mono)">${exp || "—"}</td>
+        <td style="text-align:center;font-family:var(--mono)">${sc || "—"}</td>
+        <td style="text-align:center;font-family:var(--mono);${mis>0?"color:var(--danger);font-weight:700":""}">${mis || "—"}</td>
         <td style="min-width:110px">
-          <div style="display:flex;align-items:center;gap:6px">
+          ${exp > 0 ? `<div style="display:flex;align-items:center;gap:6px">
             <div class="progress-bar" style="flex:1"><div class="progress-fill ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
             <span style="font-family:var(--mono);font-size:11px;min-width:32px">${pct}%</span>
-          </div>
+          </div>` : `<span style="font-size:11px;color:var(--text-3)">${s.has_parts_cached?"Sin scans":"Sincronizar"}</span>`}
         </td>
         <td><a href="prepacking.html" target="_blank" class="btn btn-sm btn-secondary" style="text-decoration:none;font-size:11px">Escanear ↗</a></td>
       </tr>`;
