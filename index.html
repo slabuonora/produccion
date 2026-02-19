@@ -1676,22 +1676,14 @@ async function calcPrepMaterial() {
       `service_id=in.(${selectedIds.join(",")})&select=service_id,materials_optimizations_json,itens_json,raw_detail_json,optimizations_json`
     );
     
-    // DEBUG: log the actual board data structure
-    console.log("[prep] Details fetched:", details.length, "services");
-    for (const d of details) {
-      const matOpt = d.materials_optimizations_json || {};
-      const itens = d.itens_json || {};
-      const raw = d.raw_detail_json || {};
-      console.log(`[prep] SVC ${d.service_id}:`, {
-        matOpt_boards: matOpt.boards?.length || 0,
-        matOpt_boards_sample: matOpt.boards?.[0],
-        itens_boards: itens.boards?.length || 0,
-        itens_boards_sample: itens.boards?.[0],
-        raw_materials_boards: raw.materials?.boards?.length || 0,
-        raw_materials_boards_sample: raw.materials?.boards?.[0],
-        raw_labour_cutting: raw.labour?.cutting,
-      });
-    }
+    // Track services without material data
+    const detailIds = new Set(details.map(d => d.service_id));
+    const missingIds = selectedIds.filter(id => {
+      if (!detailIds.has(id)) return true;
+      const d = details.find(x => x.service_id === id);
+      const matSrc = d?.materials_optimizations_json || d?.itens_json || {};
+      return !(matSrc.boards?.length > 0);
+    });
     
     // Map detail by service_id
     const detailMap = {};
@@ -1775,6 +1767,30 @@ async function calcPrepMaterial() {
     
     // Render global thickness table
     renderThicknessTable(globalByThickness, globalTotalBoards);
+    
+    // Show warning for services without material data
+    let missingHtml = "";
+    if (missingIds.length > 0) {
+      const missingNames = missingIds.map(id => {
+        const svc = prepQueueData.find(s => s.service_id === id);
+        return svc ? `${svc.service_name || "ID " + id} (${id})` : `ID ${id}`;
+      });
+      missingHtml = `<div class="card" style="border-left:3px solid var(--warn);background:rgba(234,179,8,.06)">
+        <div class="card-title" style="color:var(--warn)">⚠ Servicios sin datos de materiales</div>
+        <p style="font-size:12px;color:var(--text-2);margin:0 0 10px">${missingNames.map(n => escH(n)).join(", ")}</p>
+        <p style="font-size:11px;color:var(--text-3);margin:0 0 10px">Necesitan sincronizar desde MobCloud para traer los materiales.</p>
+        <button class="btn btn-secondary btn-sm" onclick="syncMissingServices([${missingIds.join(",")}])">🔄 Sincronizar servicios faltantes</button>
+      </div>`;
+    }
+    
+    // Insert warning before results if needed
+    let warningEl = qs("#prepMissingWarning");
+    if (!warningEl) {
+      warningEl = document.createElement("div");
+      warningEl.id = "prepMissingWarning";
+      qs("#prepResults").prepend(warningEl);
+    }
+    warningEl.innerHTML = missingHtml;
     
     qs("#prepResults").style.display = "";
     
@@ -1887,6 +1903,31 @@ function renderThicknessTable(globalByThickness, totalBoards) {
     <td style="text-align:right;font-family:var(--mono)">${totalBoards}</td>
     <td></td>
   </tr>`;
+}
+
+async function syncMissingServices(serviceIds) {
+  showLoading(`Sincronizando ${serviceIds.length} servicio(s) desde MobCloud...`);
+  let synced = 0, failed = 0;
+  
+  for (const sid of serviceIds) {
+    try {
+      await invokeFunction("sales-quotes-service", { action: "detail", service_id: sid });
+      synced++;
+    } catch(e) {
+      console.warn(`[sync] SVC ${sid} failed:`, e.message);
+      failed++;
+    }
+  }
+  
+  hideLoading();
+  
+  if (synced > 0) {
+    toast(`${synced} servicio(s) sincronizado(s)${failed > 0 ? `, ${failed} fallaron` : ""}`, synced > 0 ? "success" : "error");
+    // Re-run calculation
+    calcPrepMaterial();
+  } else {
+    toast(`Error sincronizando: ${failed} servicio(s) fallaron`, "error");
+  }
 }
 
 function printPrepMaterial() {
