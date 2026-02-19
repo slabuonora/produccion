@@ -314,6 +314,26 @@
       }
       .card-title { break-after: avoid; }
     }
+    /* ── Piezas progress cards ── */
+    .pieza-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; position: relative; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s; }
+    .pieza-card:hover { border-color: var(--accent); }
+    .pieza-card.active { border-color: var(--warning); box-shadow: 0 0 12px rgba(245,158,11,0.15); }
+    .pieza-card.complete { border-color: var(--success); }
+    .pieza-card .pc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .pieza-card .pc-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 2px 7px; border-radius: 4px; }
+    .pieza-card .pc-badge.cutting { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .pieza-card .pc-badge.done { background: rgba(34,197,94,0.15); color: var(--success); }
+    .pieza-card .pc-badge.pending { background: var(--bg); color: var(--text-3); }
+    .pieza-card .pc-name { font-weight: 700; font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pieza-card .pc-client { font-size: 12px; color: var(--text-2); }
+    .pieza-card .pc-stats { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+    .pieza-card .pc-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); }
+    .pieza-card .pc-stat-value { font-size: 15px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--text); }
+    .pieza-card .pc-bar { height: 4px; border-radius: 2px; background: var(--bg); margin-top: 12px; overflow: hidden; }
+    .pieza-card .pc-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+    .pieza-card .pc-pct { position: absolute; top: 14px; right: 16px; font-size: 22px; font-weight: 800; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .pc-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); animation: pcPulse 2s infinite; }
+    @keyframes pcPulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
   </style>
 </head>
 <body>
@@ -690,6 +710,7 @@
     <button class="nav-tab" onclick="switchCorteSub('tendencia')" id="corte-tendencia">Tendencia</button>
     <button class="nav-tab" onclick="switchCorteSub('prep')" id="corte-prep">📦 Prep Material</button>
     <button class="nav-tab" onclick="switchCorteSub('analytics')" id="corte-analytics">🤖 Analytics IA</button>
+    <button class="nav-tab" onclick="switchCorteSub('piezas')" id="corte-piezas">🏷 Piezas</button>
   </div>
 
   <!-- SUB: HOY EN VIVO -->
@@ -1151,6 +1172,74 @@
     </div><!-- end caContent -->
   </div><!-- end corte-panel-analytics -->
 
+  <!-- SUB: PIEZAS EN VIVO -->
+  <div id="corte-panel-piezas" style="display:none">
+
+    <!-- KPIs -->
+    <div class="metrics-row" style="grid-template-columns: repeat(5, 1fr)">
+      <div class="metric-card">
+        <div class="metric-label">Piezas hoy</div>
+        <div class="metric-value" id="cpPiezasHoy">—</div>
+        <div class="metric-sub">cortadas por label agent</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Servicio activo</div>
+        <div class="metric-value" id="cpServicioActivo" style="font-size:16px">—</div>
+        <div class="metric-sub" id="cpServicioActivoSub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Progreso</div>
+        <div class="metric-value" id="cpProgreso">—</div>
+        <div class="metric-sub" id="cpProgresoSub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Última pieza</div>
+        <div class="metric-value" id="cpUltimaPieza">—</div>
+        <div class="metric-sub" id="cpUltimaPiezaSub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tiempo restante</div>
+        <div class="metric-value" id="cpTiempoRest">—</div>
+        <div class="metric-sub">estimado</div>
+      </div>
+    </div>
+
+    <!-- Service progress cards -->
+    <div style="margin-top:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <h3 style="margin:0;font-size:14px;color:var(--text)">Progreso por servicio</h3>
+        <span class="metric-sub" id="cpServCount"></span>
+        <div style="flex:1"></div>
+        <label style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="cpHideEmpty" onchange="renderPiezasCards()"> Ocultar sin cortes
+        </label>
+        <button class="btn btn-secondary btn-sm" onclick="loadCortePiezas()">↻ Refresh</button>
+      </div>
+      <div id="cpCardsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px">
+        <div style="color:var(--text-3);font-size:13px;padding:20px;text-align:center">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Live feed -->
+    <div style="margin-top:24px">
+      <h3 style="margin:0 0 12px;font-size:14px;color:var(--text)">📡 Feed en tiempo real</h3>
+      <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+        <table class="cycle-table">
+          <thead><tr>
+            <th>Hora</th>
+            <th>Pieza</th>
+            <th>Servicio</th>
+            <th>Cliente</th>
+            <th style="text-align:right">Dim.</th>
+            <th style="text-align:right">ID</th>
+          </tr></thead>
+          <tbody id="cpFeedBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end corte-panel-piezas -->
+
 </div><!-- container -->
 </div><!-- end panel-corte -->
 
@@ -1380,7 +1469,7 @@ let corteBaseline = [];
 let corteDaily = [];
 
 function switchCorteSub(sub) {
-  ["hoy","servicios","tendencia","prep","analytics"].forEach(s => {
+  ["hoy","servicios","tendencia","prep","analytics","piezas"].forEach(s => {
     const p = qs(`#corte-panel-${s}`);
     const t = qs(`#corte-${s}`);
     if (p) p.style.display = s === sub ? "" : "none";
@@ -1390,6 +1479,7 @@ function switchCorteSub(sub) {
   if (sub === "tendencia") loadCorteTendencia();
   if (sub === "prep") loadPrepPanel();
   if (sub === "analytics") loadCorteAnalytics();
+  if (sub === "piezas") loadCortePiezas();
 }
 
 async function loadCorte() {
@@ -2899,6 +2989,177 @@ function printAnalytics() {
     const pw = document.getElementById("printWrapper");
     if (pw) pw.remove();
   }, 1000);
+}
+
+// ══════════════════════════════════════════════
+// CORTE: PIEZAS EN VIVO (Label Agent)
+// ══════════════════════════════════════════════
+let cpServicesData = [];
+let cpFeedData = [];
+let cpAutoRefresh = null;
+
+async function loadCortePiezas() {
+  try {
+    const [services, feed] = await Promise.all([
+      sbQuery("cortes_service_progress", "order=last_cut_at.desc.nullslast"),
+      sbQuery("cortes_feed_today", "order=printed_at.desc&limit=50"),
+    ]);
+    cpServicesData = services || [];
+    cpFeedData = feed || [];
+
+    // KPIs
+    const piezasHoy = cpFeedData.length;
+    const activeService = cpServicesData.find(s => parseFloat(s.cut_progress_pct) > 0 && parseFloat(s.cut_progress_pct) < 100);
+    const lastPieza = cpFeedData[0];
+
+    qs("#cpPiezasHoy").textContent = piezasHoy;
+
+    if (activeService) {
+      qs("#cpServicioActivo").textContent = activeService.service_name;
+      qs("#cpServicioActivoSub").textContent = activeService.client_name || "";
+      const pct = parseFloat(activeService.cut_progress_pct);
+      qs("#cpProgreso").textContent = `${activeService.pieces_cut}/${activeService.total_unique_parts}`;
+      qs("#cpProgresoSub").textContent = `${pct.toFixed(1)}% cortado`;
+      if (activeService.est_remaining_min) {
+        const mins = parseFloat(activeService.est_remaining_min);
+        qs("#cpTiempoRest").textContent = mins > 60 ? `${(mins/60).toFixed(1)}h` : `${Math.round(mins)}m`;
+      } else {
+        qs("#cpTiempoRest").textContent = "—";
+      }
+    } else {
+      qs("#cpServicioActivo").textContent = "Ninguno";
+      qs("#cpServicioActivoSub").textContent = "";
+      qs("#cpProgreso").textContent = "—";
+      qs("#cpProgresoSub").textContent = "";
+      qs("#cpTiempoRest").textContent = "—";
+    }
+
+    if (lastPieza) {
+      const t = new Date(lastPieza.printed_at);
+      qs("#cpUltimaPieza").textContent = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+      qs("#cpUltimaPiezaSub").textContent = lastPieza.part_name || `#${lastPieza.part_id}`;
+    } else {
+      qs("#cpUltimaPieza").textContent = "—";
+      qs("#cpUltimaPiezaSub").textContent = "";
+    }
+
+    renderPiezasCards();
+    renderPiezasFeed();
+
+    // Auto-refresh every 8 seconds while tab is active
+    if (cpAutoRefresh) clearInterval(cpAutoRefresh);
+    cpAutoRefresh = setInterval(() => {
+      if (qs("#corte-piezas")?.classList.contains("active")) {
+        loadCortePiezas();
+      } else {
+        clearInterval(cpAutoRefresh);
+        cpAutoRefresh = null;
+      }
+    }, 8000);
+
+  } catch (err) {
+    console.error("loadCortePiezas:", err);
+    qs("#cpCardsGrid").innerHTML = `<div style="color:var(--danger);padding:20px">Error: ${err.message}</div>`;
+  }
+}
+
+function renderPiezasCards() {
+  const hideEmpty = qs("#cpHideEmpty")?.checked;
+  let data = cpServicesData;
+  if (hideEmpty) data = data.filter(s => s.pieces_cut > 0);
+
+  const active = data.filter(s => parseFloat(s.cut_progress_pct) > 0 && parseFloat(s.cut_progress_pct) < 100);
+  const complete = data.filter(s => parseFloat(s.cut_progress_pct) >= 100);
+  const pending = data.filter(s => !s.cut_progress_pct || parseFloat(s.cut_progress_pct) === 0);
+
+  qs("#cpServCount").textContent = `${data.length} servicios`;
+
+  const grid = qs("#cpCardsGrid");
+  if (!data.length) {
+    grid.innerHTML = `<div style="color:var(--text-3);padding:30px;text-align:center">Sin servicios con piezas cacheadas. Sincronizar desde Cola → sync-parts.</div>`;
+    return;
+  }
+
+  let html = "";
+
+  // Active first
+  const renderCard = (s) => {
+    const pct = parseFloat(s.cut_progress_pct) || 0;
+    const isComplete = pct >= 100;
+    const isActive = pct > 0 && pct < 100;
+    const statusClass = isComplete ? "complete" : isActive ? "active" : "";
+    const badgeClass = isComplete ? "done" : isActive ? "cutting" : "pending";
+    const badgeText = isComplete ? "✓ COMPLETO" : isActive ? "⚡ CORTANDO" : "PENDIENTE";
+    const barColor = isComplete ? "var(--success)" : isActive ? "var(--warning)" : "var(--text-3)";
+
+    const elapsed = s.cutting_elapsed_min ? Math.round(parseFloat(s.cutting_elapsed_min)) : null;
+    const remaining = s.est_remaining_min ? parseFloat(s.est_remaining_min) : null;
+
+    let timeHtml = "";
+    if (elapsed) timeHtml += `<div><div class="pc-stat-label">Tiempo</div><div class="pc-stat-value">${elapsed}m</div></div>`;
+    if (remaining && remaining > 0) {
+      const rText = remaining > 60 ? `${(remaining/60).toFixed(1)}h` : `~${Math.round(remaining)}m`;
+      timeHtml += `<div><div class="pc-stat-label">Resta</div><div class="pc-stat-value" style="color:var(--warning)">${rText}</div></div>`;
+    }
+
+    return `
+      <div class="pieza-card ${statusClass}">
+        <div class="pc-pct" style="color:${barColor}">${Math.round(pct)}%</div>
+        <div class="pc-header">
+          ${isActive ? '<div class="pc-pulse"></div>' : ''}
+          <span class="pc-badge ${badgeClass}">${badgeText}</span>
+        </div>
+        <div class="pc-name" title="${s.service_name}">${s.service_name}</div>
+        <div class="pc-client">${s.client_name || "Sin cliente"}</div>
+        <div class="pc-stats">
+          <div><div class="pc-stat-label">Cortadas</div><div class="pc-stat-value">${s.pieces_cut}/${s.total_unique_parts}</div></div>
+          <div><div class="pc-stat-label">CNC</div><div class="pc-stat-value">${s.parts_needing_cnc}</div></div>
+          <div><div class="pc-stat-label">Total pzas</div><div class="pc-stat-value">${s.total_pieces_expected}</div></div>
+          ${timeHtml}
+        </div>
+        <div class="pc-bar"><div class="pc-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      </div>`;
+  };
+
+  if (active.length) {
+    html += `<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--warning);display:flex;align-items:center;gap:8px;margin-top:4px">⚡ EN PROCESO <span style="font-weight:400;color:var(--text-3)">(${active.length})</span></div>`;
+    active.forEach(s => html += renderCard(s));
+  }
+  if (complete.length) {
+    html += `<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--success);display:flex;align-items:center;gap:8px;margin-top:8px">✓ COMPLETADOS <span style="font-weight:400;color:var(--text-3)">(${complete.length})</span></div>`;
+    complete.forEach(s => html += renderCard(s));
+  }
+  if (pending.length) {
+    html += `<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-3);display:flex;align-items:center;gap:8px;margin-top:8px">◯ PENDIENTES <span style="font-weight:400;color:var(--text-3)">(${pending.length})</span></div>`;
+    pending.slice(0, 20).forEach(s => html += renderCard(s));
+    if (pending.length > 20) {
+      html += `<div style="grid-column:1/-1;text-align:center;color:var(--text-3);font-size:12px;padding:8px">... y ${pending.length - 20} más</div>`;
+    }
+  }
+
+  grid.innerHTML = html;
+}
+
+function renderPiezasFeed() {
+  const body = qs("#cpFeedBody");
+  if (!cpFeedData.length) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:20px">Sin piezas cortadas hoy — esperando label agent 🪚</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = cpFeedData.map(item => {
+    const t = new Date(item.printed_at);
+    const timeStr = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    const dims = item.part_c && item.part_l ? `${item.part_c}×${item.part_l}` : "—";
+    return `<tr>
+      <td style="font-family:monospace;font-weight:600;color:var(--warning)">${timeStr}</td>
+      <td>${item.part_name || `Pieza ${item.part_id}`}</td>
+      <td style="font-weight:600">${item.service_name || "?"}</td>
+      <td style="color:var(--text-2)">${item.client_name || ""}</td>
+      <td style="text-align:right;font-family:monospace;color:var(--text-3)">${dims}</td>
+      <td style="text-align:right;font-family:monospace;font-size:11px;color:var(--text-3)">#${item.part_id}</td>
+    </tr>`;
+  }).join("");
 }
 
 // ══════════════════════════════════════════════
