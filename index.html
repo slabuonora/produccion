@@ -261,6 +261,9 @@
   <div class="card">
     <div class="card-title">
       Tracking por servicio MobCloud
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);cursor:pointer;margin-left:12px">
+        <input type="checkbox" id="trackOnlyProd" checked onchange="renderTrackProjects();renderTrackMetrics()"> Solo en producción
+      </label>
       <div style="margin-left:auto; display:flex; gap:8px; align-items:flex-end;">
         <div class="form-group" style="margin-bottom:0">
           <label>Desde</label>
@@ -941,6 +944,11 @@ function trackSetRange(range) {
 
 async function loadTracking() {
   try {
+    // Ensure queueData is loaded for production filter
+    if (!queueData.length) {
+      try { queueData = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc"); } catch {}
+    }
+    
     const from = qs("#trackFrom").value;
     const to = qs("#trackTo").value;
     let dateFilter = "";
@@ -977,10 +985,11 @@ async function loadTracking() {
 
 function renderTrackMetrics() {
   if (hasServiceMap) {
-    const totalCycles = trackServices.reduce((s, r) => s + (r.total_cycles || 0), 0);
-    const totalSeconds = trackServices.reduce((s, r) => s + (r.total_cnc_seconds || 0), 0);
-    const totalMobParts = trackServices.reduce((s, r) => s + (r.parts_machined || 0), 0);
-    qs("#tProjects").textContent = trackServices.length;
+    const filtered = getFilteredTrackServices();
+    const totalCycles = filtered.reduce((s, r) => s + (r.total_cycles || 0), 0);
+    const totalSeconds = filtered.reduce((s, r) => s + (r.total_cnc_seconds || 0), 0);
+    const totalMobParts = filtered.reduce((s, r) => s + (r.parts_machined || 0), 0);
+    qs("#tProjects").textContent = filtered.length;
     qs("#tPieces").textContent = totalCycles.toLocaleString();
     qs("#tPiecesSub").textContent = `ciclos completados`;
     qs("#tTime").textContent = fmtMin(totalSeconds);
@@ -1007,8 +1016,17 @@ function renderTrackProjects() {
   }
 }
 
+function getFilteredTrackServices() {
+  let svcs = trackServices.filter(s => s.total_cycles > 0 || s.parts_needing_machining > 0);
+  if (qs("#trackOnlyProd").checked && queueData.length > 0) {
+    const prodIds = new Set(queueData.map(q => q.service_id));
+    svcs = svcs.filter(s => prodIds.has(s.service_id));
+  }
+  return svcs;
+}
+
 function renderServiceCards(container) {
-  const services = trackServices.filter(s => s.total_cycles > 0 || s.parts_needing_machining > 0);
+  const services = getFilteredTrackServices();
   if (!services.length) {
     container.innerHTML = `<div class="empty">Servicios sincronizados pero sin actividad CNC detectada aún</div>`;
     return;
