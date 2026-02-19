@@ -149,11 +149,19 @@
     .hist-lbl { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 4px; }
 
     /* ── Day chart (historical) ── */
-    .day-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+    .day-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; position: relative; }
     .day-col { flex: 1; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
     .day-col:hover .day-bar { opacity: 1; }
     .day-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); opacity: 0.6; min-height: 3px; transition: all 0.3s; }
     .day-bar.today { background: var(--success); opacity: 0.9; }
+    .day-bar.good { background: var(--success); opacity: 0.7; }
+    .day-bar.mid { background: var(--accent); opacity: 0.5; }
+    .day-bar.bad { background: #ef4444; opacity: 0.7; }
+    .day-bar.warn { background: #eab308; opacity: 0.7; }
+    .day-bar.highlight { background: var(--success); opacity: 0.9; }
+    details summary .collapse-arrow { display:inline-block;transition:transform 0.2s;font-size:10px; }
+    details[open] summary .collapse-arrow { transform:rotate(90deg); }
+    details summary::-webkit-details-marker { display:none; }
     .day-cnt { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-bottom: 3px; }
     .day-lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 4px; }
 
@@ -817,24 +825,140 @@
 
   </div><!-- end corte-panel-servicios -->
 
-  <!-- SUB: TENDENCIA 30 DÍAS -->
+  <!-- SUB: TENDENCIA (expanded) -->
   <div id="corte-panel-tendencia" style="display:none">
 
-    <div class="metrics-row">
-      <div class="metric-card"><div class="metric-label">Días registrados</div><div class="metric-value" id="ctDays">—</div></div>
-      <div class="metric-card"><div class="metric-label">Total placas</div><div class="metric-value" id="ctTotal">—</div></div>
-      <div class="metric-card"><div class="metric-label">Promedio/día</div><div class="metric-value" id="ctAvgDay">—</div></div>
-      <div class="metric-card"><div class="metric-label">Mejor día</div><div class="metric-value" id="ctBestDay">—</div><div class="metric-sub" id="ctBestDaySub"></div></div>
+    <!-- Period selector -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--text-3)">Período:</span>
+      <select id="ctPeriod" onchange="loadCorteTendencia()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-1);font-size:13px">
+        <option value="30" selected>Últimos 30 días</option>
+        <option value="60">Últimos 60 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="365">Todo 2026</option>
+      </select>
+      <span id="ctStatus" style="font-size:11px;color:var(--text-3);margin-left:auto"></span>
     </div>
 
-    <div class="card">
-      <div class="card-title">Producción diaria — últimos 30 días</div>
-      <div class="day-bars" id="ctDailyBars" style="height:140px"></div>
-      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--text-3)">
-        <span>Placas cortadas por día</span>
-        <span id="ctDailySummary"></span>
+    <!-- 🔥 RACHA ACTUAL — Hero card -->
+    <div id="ctRachaCard" class="card" style="background:linear-gradient(135deg,var(--card),var(--bg));border-left:4px solid var(--success);margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:32px" id="ctRachaIcon">🔥</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:var(--text-1)" id="ctRachaTitle">Cargando rachas...</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px" id="ctRachaSub"></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:800;color:var(--success)" id="ctRachaDays">—</div>
+          <div style="font-size:11px;color:var(--text-3)" id="ctRachaLabel">días</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div id="ctRachaBar" style="height:100%;background:var(--success);border-radius:3px;width:0%;transition:width 0.6s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:3px">
+        <span id="ctRachaRange"></span>
+        <span id="ctRachaBest"></span>
       </div>
     </div>
+
+    <!-- 📈 PRODUCCIÓN — Always open -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📈 Producción diaria</span>
+        <span style="font-size:11px;color:var(--text-3)" id="ctDailySummary"></span>
+      </div>
+      <div class="metrics-row" style="margin-bottom:10px">
+        <div class="metric-card"><div class="metric-label">Promedio/día</div><div class="metric-value" id="ctAvgDay">—</div></div>
+        <div class="metric-card"><div class="metric-label">Mejor día</div><div class="metric-value" id="ctBestDay">—</div><div class="metric-sub" id="ctBestDaySub"></div></div>
+        <div class="metric-card"><div class="metric-label">Total</div><div class="metric-value" id="ctTotal">—</div></div>
+        <div class="metric-card"><div class="metric-label">Días</div><div class="metric-value" id="ctDays">—</div></div>
+      </div>
+      <!-- Daily bars with moving average + target -->
+      <div class="day-bars" id="ctDailyBars" style="height:150px;position:relative"></div>
+      <div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--text-3)">
+        <span>◼ Producción diaria</span>
+        <span style="color:var(--accent)">━ Prom. móvil 7d</span>
+        <span style="color:#ef4444">┈ Target 50</span>
+      </div>
+    </div>
+
+    <!-- 📈 PRODUCCIÓN SEMANAL -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">📈 Tendencia semanal</div>
+      <div id="ctWeeklyChart" class="day-bars" style="height:130px"></div>
+      <div style="font-size:10px;color:var(--text-3);margin-top:6px">
+        Promedio placas/día por semana — <span style="color:#ef4444">┈ Target 50</span>
+      </div>
+    </div>
+
+    <!-- ⏰ DISCIPLINA ARRANQUE — Collapsible -->
+    <details class="card" style="margin-bottom:14px" id="ctDisciplinaSection">
+      <summary class="card-title" style="cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+        <span style="transition:transform 0.2s" class="collapse-arrow">▶</span>
+        ⏰ Disciplina de arranque
+        <span style="margin-left:auto;font-size:11px;color:var(--text-3)" id="ctDisciplinaSummary"></span>
+      </summary>
+      <div style="margin-top:10px">
+        <div class="metrics-row" style="margin-bottom:10px">
+          <div class="metric-card"><div class="metric-label">Demora prom.</div><div class="metric-value" id="ctAvgDemora">—</div></div>
+          <div class="metric-card"><div class="metric-label">Mejor demora</div><div class="metric-value" id="ctBestDemora">—</div></div>
+          <div class="metric-card"><div class="metric-label">Días a tiempo</div><div class="metric-value" id="ctDiasATiempo">—</div></div>
+          <div class="metric-card"><div class="metric-label">Tendencia</div><div class="metric-value" id="ctDemoraTrend">—</div></div>
+        </div>
+        <div class="day-bars" id="ctDemoraBars" style="height:120px"></div>
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--text-3)">
+          <span style="color:var(--success)">◼ ≤60 min</span>
+          <span style="color:#eab308">◼ 60-120 min</span>
+          <span style="color:#ef4444">◼ >120 min</span>
+          <span style="color:#ef4444">┈ Límite 120 min</span>
+        </div>
+        <!-- Monthly evolution -->
+        <div class="card-title" style="margin-top:14px;font-size:12px">Evolución mensual</div>
+        <div id="ctDemoraMonthly" class="day-bars" style="height:100px"></div>
+      </div>
+    </details>
+
+    <!-- 📅 PATRONES — Collapsible -->
+    <details class="card" style="margin-bottom:14px" id="ctPatronesSection">
+      <summary class="card-title" style="cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+        <span class="collapse-arrow">▶</span>
+        📅 Patrones
+        <span style="margin-left:auto;font-size:11px;color:var(--text-3)" id="ctPatronesSummary"></span>
+      </summary>
+      <div style="margin-top:10px">
+        <!-- Day of week -->
+        <div class="card-title" style="font-size:12px">Día de semana — promedio histórico</div>
+        <div id="ctDowChart" class="day-bars" style="height:120px"></div>
+        <!-- Hour of day -->
+        <div class="card-title" style="margin-top:14px;font-size:12px">Hora pico — ¿cuándo rinde más?</div>
+        <div id="ctHourChart" class="day-bars" style="height:110px"></div>
+        <!-- Seasonality -->
+        <div class="card-title" style="margin-top:14px;font-size:12px">Estacionalidad — ¿hay meses mejores?</div>
+        <div id="ctSeasonChart" class="day-bars" style="height:100px"></div>
+      </div>
+    </details>
+
+    <!-- ⏱️ EFICIENCIA — Collapsible -->
+    <details class="card" style="margin-bottom:14px" id="ctEficienciaSection">
+      <summary class="card-title" style="cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+        <span class="collapse-arrow">▶</span>
+        ⏱️ Eficiencia y comparativa
+        <span style="margin-left:auto;font-size:11px;color:var(--text-3)" id="ctEficienciaSummary"></span>
+      </summary>
+      <div style="margin-top:10px">
+        <!-- Dead time -->
+        <div class="card-title" style="font-size:12px">Tiempo muerto diario</div>
+        <div id="ctDeadTimeBars" class="day-bars" style="height:120px"></div>
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--text-3)">
+          <span style="color:var(--accent)">◼ Corte efectivo</span>
+          <span style="color:var(--border)">◼ Tiempo muerto</span>
+        </div>
+        <!-- YoY -->
+        <div class="card-title" style="margin-top:14px;font-size:12px">Año vs año — mismos meses</div>
+        <div id="ctYoyTable" style="font-size:12px"></div>
+      </div>
+    </details>
 
   </div><!-- end corte-panel-tendencia -->
 
@@ -1557,45 +1681,381 @@ async function loadCorteServicios() {
 }
 
 // Tendencia 30 días (sub-tab)
+// ══════════════════════════════════════════════
+// CORTE: TENDENCIA (expanded 8-module dashboard)
+// ══════════════════════════════════════════════
+let ctLazyLoaded = { disciplina: false, patrones: false, eficiencia: false };
+
+// Lazy load: attach listeners once
+document.addEventListener("DOMContentLoaded", () => {
+  const secs = { ctDisciplinaSection: "disciplina", ctPatronesSection: "patrones", ctEficienciaSection: "eficiencia" };
+  for (const [id, key] of Object.entries(secs)) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("toggle", () => { if (el.open && !ctLazyLoaded[key]) loadTendenciaLazy(key); });
+  }
+});
+
 async function loadCorteTendencia() {
+  const days = parseInt(qs("#ctPeriod")?.value || 30);
+  qs("#ctStatus").textContent = "Cargando...";
+  ctLazyLoaded = { disciplina: false, patrones: false, eficiencia: false };
   try {
-    corteDaily = await sbRpc("fn_daily_last", { p_machine_id: CORTE_MACHINE, p_days: 30 });
-    if (!corteDaily || !corteDaily.length) {
-      qs("#ctDailyBars").innerHTML = '<div class="empty">Sin datos de los últimos 30 días</div>';
-      return;
-    }
-    
-    const sorted = [...corteDaily].sort((a,b) => (a.dia||"").localeCompare(b.dia||""));
-    const totalPlacas = sorted.reduce((s,d) => s + (d.placas||0), 0);
-    const avgDay = Math.round(totalPlacas / sorted.length);
-    const best = sorted.reduce((a,b) => (b.placas||0) > (a.placas||0) ? b : a, sorted[0]);
-    
-    qs("#ctDays").textContent = sorted.length;
-    qs("#ctTotal").textContent = totalPlacas.toLocaleString();
-    qs("#ctAvgDay").textContent = avgDay;
-    qs("#ctBestDay").textContent = best.placas || 0;
-    qs("#ctBestDaySub").textContent = best.dia || "";
-    
-    const maxP = Math.max(...sorted.map(d => d.placas||0), 1);
-    qs("#ctDailyBars").innerHTML = sorted.map(d => {
-      const h = ((d.placas||0) / maxP) * 120;
-      const date = new Date(d.dia + "T12:00:00");
-      const isToday = d.dia === todayStr();
-      return `
-        <div class="day-col" title="${d.dia}: ${d.placas} placas">
-          <div class="day-cnt">${d.placas}</div>
-          <div class="day-bar${isToday?" today":""}" style="height:${h}px"></div>
-          <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${DAY_NAMES[date.getDay()]}</div>
-          <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${date.getDate()}</div>
-        </div>`;
-    }).join("");
-    
-    qs("#ctDailySummary").textContent = `Total: ${totalPlacas} placas — Prom: ${avgDay}/día`;
+    const [daily, rachas, weekly] = await Promise.all([
+      sbRpc("fn_daily_last", { p_machine_id: CORTE_MACHINE, p_days: days }),
+      sbRpc("fn_cortes_rachas", { p_machine_id: CORTE_MACHINE }).catch(() => []),
+      sbQuery("vw_cortes_semanal", `order=semana_iso.desc&limit=${Math.ceil(days/7)+1}`).catch(() => []),
+    ]);
+    corteDaily = daily;
+    renderTendenciaRachas(rachas);
+    renderTendenciaDaily(daily, days);
+    renderTendenciaWeekly(weekly);
+    qs("#ctStatus").textContent = `${daily?.length || 0} días cargados`;
   } catch(e) {
     console.error("loadCorteTendencia:", e);
-    toast("Tendencia corte: " + e.message, "error");
+    toast("Tendencia: " + e.message, "error");
+    qs("#ctStatus").textContent = "Error";
   }
 }
+
+async function loadTendenciaLazy(section) {
+  ctLazyLoaded[section] = true;
+  try {
+    if (section === "disciplina") {
+      const monthly = await sbQuery("vw_cortes_arranque_mensual", "order=anio.desc,mes.desc&limit=12");
+      renderTendenciaDisciplina(corteDaily, monthly);
+    } else if (section === "patrones") {
+      const [dow, hourly, season] = await Promise.all([
+        sbQuery("vw_cortes_por_dow", "order=dow.asc"),
+        sbQuery("vw_cortes_capacidad_hora", "order=hora.asc"),
+        sbQuery("vw_cortes_estacionalidad", "order=mes.asc"),
+      ]);
+      renderTendenciaDow(dow);
+      renderTendenciaHourly(hourly);
+      renderTendenciaSeason(season);
+    } else if (section === "eficiencia") {
+      const days = parseInt(qs("#ctPeriod")?.value || 30);
+      const [gaps, yoy] = await Promise.all([
+        sbQuery("vw_cortes_gaps_diario", `order=production_date.desc&limit=${days}`),
+        sbQuery("vw_cortes_yoy", "order=anio.desc,mes.desc&limit=12"),
+      ]);
+      renderTendenciaDeadTime(gaps);
+      renderTendenciaYoy(yoy);
+    }
+  } catch(e) {
+    console.error(`loadTendenciaLazy(${section}):`, e);
+    toast(`Error cargando ${section}: ` + e.message, "error");
+  }
+}
+
+// ── RACHAS ──
+function renderTendenciaRachas(data) {
+  const card = qs("#ctRachaCard");
+  if (!data || !data.length) {
+    qs("#ctRachaTitle").textContent = "Sin datos de rachas";
+    return;
+  }
+  // Find current streak (most recent)
+  const current = data[0] || {};
+  const best = data.reduce((a, b) => (b.dias || 0) > (a.dias || 0) ? b : a, data[0]);
+  const isPositive = current.racha_tipo === "positiva";
+  
+  qs("#ctRachaIcon").textContent = isPositive ? "🔥" : "🧊";
+  card.style.borderLeftColor = isPositive ? "var(--success)" : "#ef4444";
+  qs("#ctRachaDays").textContent = current.dias || 0;
+  qs("#ctRachaDays").style.color = isPositive ? "var(--success)" : "#ef4444";
+  qs("#ctRachaLabel").textContent = isPositive ? "días arriba" : "días abajo";
+  qs("#ctRachaTitle").textContent = isPositive
+    ? `Racha positiva: ${current.dias} días consecutivos arriba del promedio`
+    : `Racha negativa: ${current.dias} días consecutivos abajo del promedio`;
+  qs("#ctRachaSub").textContent = `Promedio en racha: ${Number(current.avg_placas||0).toFixed(1)} placas/día`;
+  qs("#ctRachaRange").textContent = current.fecha_inicio && current.fecha_fin 
+    ? `${current.fecha_inicio} → ${current.fecha_fin}` : "";
+  qs("#ctRachaBest").textContent = `Mejor racha: ${best.dias || 0} días (${Number(best.avg_placas||0).toFixed(1)} pl/d)`;
+  // Progress bar: current vs best
+  const pct = best.dias > 0 ? Math.min(100, (current.dias / best.dias) * 100) : 0;
+  qs("#ctRachaBar").style.width = pct + "%";
+  qs("#ctRachaBar").style.background = isPositive ? "var(--success)" : "#ef4444";
+}
+
+// ── PRODUCCIÓN DIARIA ──
+function renderTendenciaDaily(data, days) {
+  if (!data || !data.length) {
+    qs("#ctDailyBars").innerHTML = '<div class="empty">Sin datos</div>';
+    return;
+  }
+  const sorted = [...data].sort((a,b) => (a.dia||"").localeCompare(b.dia||""));
+  const totalPlacas = sorted.reduce((s,d) => s + (d.placas||0), 0);
+  const avgDay = Math.round(totalPlacas / sorted.length);
+  const best = sorted.reduce((a,b) => (b.placas||0) > (a.placas||0) ? b : a, sorted[0]);
+  
+  qs("#ctDays").textContent = sorted.length;
+  qs("#ctTotal").textContent = totalPlacas.toLocaleString();
+  qs("#ctAvgDay").textContent = avgDay;
+  qs("#ctBestDay").textContent = best.placas || 0;
+  qs("#ctBestDaySub").textContent = best.dia || "";
+  qs("#ctDailySummary").textContent = `Prom: ${avgDay}/día — Total: ${totalPlacas}`;
+
+  // Compute 7-day moving average
+  const ma7 = sorted.map((d, i) => {
+    const slice = sorted.slice(Math.max(0, i - 6), i + 1);
+    return slice.reduce((s, x) => s + (x.placas || 0), 0) / slice.length;
+  });
+  
+  const maxP = Math.max(...sorted.map(d => d.placas||0), 50, 1);
+  const TARGET = 50;
+  const chartH = 140;
+  
+  // SVG overlay for moving average + target
+  const colW = 100 / sorted.length;
+  let svgPath = "";
+  const svgPoints = ma7.map((v, i) => {
+    const x = (i + 0.5) * colW;
+    const y = 100 - (v / maxP) * 100 * (chartH / 150);
+    return `${x},${y}`;
+  });
+  svgPath = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+    <polyline points="${svgPoints.join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="${100 - (TARGET/maxP)*100*(chartH/150)}" x2="100" y2="${100 - (TARGET/maxP)*100*(chartH/150)}" 
+          stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" vector-effect="non-scaling-stroke" />
+  </svg>`;
+  
+  const bars = sorted.map(d => {
+    const p = d.placas || 0;
+    const h = Math.max(3, (p / maxP) * chartH);
+    const date = new Date(d.dia + "T12:00:00");
+    const isToday = d.dia === todayStr();
+    const cls = isToday ? "today" : p >= avgDay ? "good" : p >= avgDay * 0.5 ? "mid" : "bad";
+    return `
+      <div class="day-col" title="${d.dia}: ${p} placas">
+        <div class="day-cnt" style="font-size:${sorted.length>45?'8':'9'}px">${p > 0 ? p : ""}</div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl">${DAY_NAMES[date.getDay()]}</div>
+        <div class="day-lbl">${date.getDate()}</div>
+      </div>`;
+  }).join("");
+  
+  qs("#ctDailyBars").innerHTML = bars + svgPath;
+}
+
+// ── PRODUCCIÓN SEMANAL ──
+function renderTendenciaWeekly(data) {
+  const chart = qs("#ctWeeklyChart");
+  if (!data || !data.length) { chart.innerHTML = '<div class="empty">Sin datos semanales</div>'; return; }
+  
+  const sorted = [...data].sort((a,b) => (a.semana_iso||"").localeCompare(b.semana_iso||""));
+  const maxV = Math.max(...sorted.map(d => Number(d.avg_placas_dia||0)), 50) * 1.1;
+  const TARGET = 50;
+  const chartH = 120;
+  
+  chart.innerHTML = sorted.map((w, i) => {
+    const v = Number(w.avg_placas_dia || 0);
+    const h = Math.max(3, (v / maxV) * chartH);
+    const prev = i > 0 ? Number(sorted[i-1].avg_placas_dia||0) : v;
+    const trend = v > prev ? "▲" : v < prev ? "▼" : "=";
+    const trendColor = v > prev ? "var(--success)" : v < prev ? "#ef4444" : "var(--text-3)";
+    const cls = v >= TARGET ? "good" : v >= 20 ? "mid" : "bad";
+    const weekLabel = (w.semana_iso||"").replace(/^\d{4}-W/, "S");
+    return `
+      <div class="day-col" title="${w.semana_iso}: ${v} pl/día, ${w.dias_produccion||0} días">
+        <div class="day-cnt" style="font-size:10px">${v.toFixed(0)} <span style="color:${trendColor};font-size:9px">${trend}</span></div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl">${weekLabel}</div>
+      </div>`;
+  }).join("") + `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+    <line x1="0" y1="${100-(TARGET/maxV)*100*(chartH/130)}" x2="100" y2="${100-(TARGET/maxV)*100*(chartH/130)}"
+          stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+  </svg>`;
+}
+
+// ── DISCIPLINA ARRANQUE ──
+function renderTendenciaDisciplina(daily, monthly) {
+  if (!daily?.length) return;
+  const sorted = [...daily].sort((a,b) => (a.dia||"").localeCompare(b.dia||""));
+  
+  const delays = sorted.map(d => Number(d.demora_arranque_min || 0)).filter(d => d > 0);
+  const avgDem = delays.length ? (delays.reduce((s,v)=>s+v,0) / delays.length) : 0;
+  const bestDem = delays.length ? Math.min(...delays) : 0;
+  const aTiempo = delays.filter(d => d <= 0).length;
+  const first = delays.length > 3 ? delays.slice(0, Math.ceil(delays.length/2)) : delays;
+  const second = delays.length > 3 ? delays.slice(Math.ceil(delays.length/2)) : delays;
+  const avgFirst = first.reduce((s,v)=>s+v,0)/(first.length||1);
+  const avgSecond = second.reduce((s,v)=>s+v,0)/(second.length||1);
+  const trendDown = avgSecond < avgFirst;
+  
+  qs("#ctAvgDemora").textContent = `${Math.round(avgDem)}'`;
+  qs("#ctBestDemora").textContent = `${Math.round(bestDem)}'`;
+  qs("#ctDiasATiempo").textContent = aTiempo;
+  qs("#ctDemoraTrend").textContent = trendDown ? "↓ Mejorando" : "↑ Empeorando";
+  qs("#ctDemoraTrend").style.color = trendDown ? "var(--success)" : "#ef4444";
+  qs("#ctDisciplinaSummary").textContent = `Prom: ${Math.round(avgDem)} min`;
+  
+  const maxDem = Math.max(...sorted.map(d => Number(d.demora_arranque_min||0)), 120, 1);
+  const chartH = 110;
+  
+  qs("#ctDemoraBars").innerHTML = sorted.map(d => {
+    const v = Number(d.demora_arranque_min || 0);
+    if (v <= 0) return "";
+    const h = Math.max(3, (v / maxDem) * chartH);
+    const cls = v <= 60 ? "good" : v <= 120 ? "warn" : "bad";
+    const date = new Date(d.dia + "T12:00:00");
+    return `
+      <div class="day-col" title="${d.dia}: ${Math.round(v)} min demora">
+        <div class="day-cnt" style="font-size:8px">${Math.round(v)}</div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl">${date.getDate()}</div>
+      </div>`;
+  }).join("") + `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+    <line x1="0" y1="${100-(120/maxDem)*100*(chartH/120)}" x2="100" y2="${100-(120/maxDem)*100*(chartH/120)}"
+          stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+  </svg>`;
+  
+  // Monthly evolution
+  if (monthly?.length) {
+    const mSorted = [...monthly].sort((a,b) => `${a.anio}-${a.mes}`.localeCompare(`${b.anio}-${b.mes}`));
+    const maxM = Math.max(...mSorted.map(m => Number(m.avg_demora_min||0)), 1);
+    const MONTH_NAMES_SHORT = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    qs("#ctDemoraMonthly").innerHTML = mSorted.map(m => {
+      const v = Number(m.avg_demora_min || 0);
+      const h = Math.max(3, (v / maxM) * 90);
+      const cls = v <= 60 ? "good" : v <= 120 ? "warn" : "bad";
+      const pct = Number(m.pct_a_tiempo || 0);
+      return `
+        <div class="day-col" title="${MONTH_NAMES_SHORT[m.mes]} ${m.anio}: ${v} min, ${pct}% a tiempo">
+          <div class="day-cnt" style="font-size:9px">${Math.round(v)}'</div>
+          <div class="day-bar ${cls}" style="height:${h}px"></div>
+          <div class="day-lbl">${MONTH_NAMES_SHORT[m.mes]}</div>
+          <div class="day-lbl" style="font-size:9px">${m.anio}</div>
+        </div>`;
+    }).join("");
+  }
+}
+
+// ── DÍA DE SEMANA ──
+function renderTendenciaDow(data) {
+  const chart = qs("#ctDowChart");
+  if (!data?.length) { chart.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  const filtered = data.filter(d => d.dow >= 1 && d.dow <= 5);
+  const maxV = Math.max(...filtered.map(d => Number(d.avg_placas||0)), 1);
+  const worst = filtered.reduce((a,b) => Number(b.avg_placas||0) < Number(a.avg_placas||0) ? b : a, filtered[0]);
+  const bestD = filtered.reduce((a,b) => Number(b.avg_placas||0) > Number(a.avg_placas||0) ? b : a, filtered[0]);
+  
+  qs("#ctPatronesSummary").textContent = `Mejor: ${bestD.dia_nombre} (${Number(bestD.avg_placas||0).toFixed(1)})`;
+  
+  chart.innerHTML = filtered.map(d => {
+    const v = Number(d.avg_placas || 0);
+    const h = Math.max(3, (v / maxV) * 100);
+    const isWorst = d.dow === worst.dow;
+    const isBest = d.dow === bestD.dow;
+    const cls = isWorst ? "bad" : isBest ? "highlight" : "mid";
+    const dem = Number(d.avg_demora_arranque || 0);
+    return `
+      <div class="day-col" style="flex:1" title="${d.dia_nombre}: ${v.toFixed(1)} pl/d, demora ${Math.round(dem)} min">
+        <div class="day-cnt" style="font-size:11px;font-weight:700;${isWorst?'color:#ef4444':''}${isBest?'color:var(--success)':''}">${v.toFixed(1)}</div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl" style="font-size:11px;font-weight:${isWorst||isBest?700:400};${isWorst?'color:#ef4444':''}${isBest?'color:var(--success)':''}">${(d.dia_nombre||"").substring(0,3)}</div>
+        <div class="day-lbl" style="font-size:9px;color:var(--text-3)">${Math.round(dem)}'</div>
+      </div>`;
+  }).join("");
+}
+
+// ── HORA PICO ──
+function renderTendenciaHourly(data) {
+  const chart = qs("#ctHourChart");
+  if (!data?.length) { chart.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  const maxV = Math.max(...data.map(d => Number(d.avg_placas||0)), 1);
+  const best = data.reduce((a,b) => Number(b.avg_placas||0) > Number(a.avg_placas||0) ? b : a, data[0]);
+  
+  chart.innerHTML = data.map(d => {
+    const v = Number(d.avg_placas || 0);
+    const h = Math.max(2, (v / maxV) * 100);
+    const isBest = d.hora === best.hora;
+    const cls = isBest ? "highlight" : v > 0 ? "mid" : "";
+    return `
+      <div class="day-col" title="${d.hora}:00 — ${v.toFixed(1)} pl/h promedio (${d.dias_con_datos} días)">
+        <div class="day-cnt" style="font-size:9px;${isBest?'color:var(--success);font-weight:700':''}">${v > 0 ? v.toFixed(1) : ""}</div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl">${String(d.hora).padStart(2,"0")}</div>
+      </div>`;
+  }).join("");
+}
+
+// ── ESTACIONALIDAD ──
+function renderTendenciaSeason(data) {
+  const chart = qs("#ctSeasonChart");
+  if (!data?.length) { chart.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  const maxV = Math.max(...data.map(d => Number(d.avg_placas_dia||0)), 1);
+  const now = new Date().getMonth() + 1;
+  const MONTH_SHORT = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  
+  chart.innerHTML = data.map(d => {
+    const v = Number(d.avg_placas_dia || 0);
+    const h = Math.max(2, (v / maxV) * 90);
+    const isCurrent = d.mes === now;
+    const cls = isCurrent ? "highlight" : "mid";
+    return `
+      <div class="day-col" style="flex:1" title="${d.mes_nombre}: ${v.toFixed(1)} pl/d prom (${d.anios_con_datos} años)">
+        <div class="day-cnt" style="font-size:9px;${isCurrent?'color:var(--success);font-weight:700':''}">${v.toFixed(1)}</div>
+        <div class="day-bar ${cls}" style="height:${h}px"></div>
+        <div class="day-lbl" style="${isCurrent?'color:var(--success);font-weight:700':''}">${MONTH_SHORT[d.mes]}</div>
+      </div>`;
+  }).join("");
+}
+
+// ── TIEMPO MUERTO ──
+function renderTendenciaDeadTime(data) {
+  const chart = qs("#ctDeadTimeBars");
+  if (!data?.length) { chart.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  const sorted = [...data].sort((a,b) => (a.production_date||"").localeCompare(b.production_date||""));
+  const maxMin = 540; // full shift
+  const chartH = 110;
+  
+  const avgMuerto = sorted.reduce((s,d) => s + Number(d.pct_tiempo_muerto||0), 0) / sorted.length;
+  qs("#ctEficienciaSummary").textContent = `Tiempo muerto prom: ${avgMuerto.toFixed(0)}%`;
+  
+  chart.innerHTML = sorted.map(d => {
+    const corte = Number(d.minutos_corte || 0);
+    const muerto = Number(d.minutos_muertos || 0);
+    const corteH = Math.max(2, (corte / maxMin) * chartH);
+    const muertoH = Math.max(0, (muerto / maxMin) * chartH);
+    const date = new Date(d.production_date + "T12:00:00");
+    return `
+      <div class="day-col" title="${d.production_date}: ${Math.round(corte)} min corte, ${Math.round(muerto)} min muerto (${d.pct_tiempo_muerto}%)">
+        <div class="day-cnt" style="font-size:8px">${d.placas||""}</div>
+        <div style="width:100%;display:flex;flex-direction:column;align-items:stretch">
+          <div style="height:${muertoH}px;background:var(--border);border-radius:3px 3px 0 0;opacity:0.5"></div>
+          <div style="height:${corteH}px;background:var(--accent);border-radius:0 0 3px 3px;opacity:0.7"></div>
+        </div>
+        <div class="day-lbl">${date.getDate()}</div>
+      </div>`;
+  }).join("");
+}
+
+// ── AÑO VS AÑO ──
+function renderTendenciaYoy(data) {
+  const el = qs("#ctYoyTable");
+  if (!data?.length) { el.innerHTML = '<div class="empty">Sin datos YoY</div>'; return; }
+  const MONTH_NAMES = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:4px">Mes</th>
+      <th style="text-align:right;padding:4px">Año actual</th>
+      <th style="text-align:right;padding:4px">Año anterior</th>
+      <th style="text-align:right;padding:4px">Cambio</th>
+    </tr></thead>
+    <tbody>${data.slice(0, 12).map(d => {
+      const change = Number(d.variacion_pct || 0);
+      const color = change > 0 ? "var(--success)" : change < 0 ? "#ef4444" : "var(--text-3)";
+      const arrow = change > 0 ? "▲" : change < 0 ? "▼" : "=";
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:4px">${MONTH_NAMES[d.mes]} ${d.anio}</td>
+        <td style="text-align:right;padding:4px;font-weight:600">${Number(d.avg_placas_dia||0).toFixed(1)}</td>
+        <td style="text-align:right;padding:4px;color:var(--text-3)">${d.prev_avg_placas ? Number(d.prev_avg_placas).toFixed(1) : "—"}</td>
+        <td style="text-align:right;padding:4px;color:${color};font-weight:600">${arrow} ${Math.abs(change).toFixed(0)}%</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table>`;
+}
+
 
 // ══════════════════════════════════════════════
 // CORTE: PREP MATERIAL (Pre-staging)
