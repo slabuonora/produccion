@@ -964,26 +964,71 @@ function switchCorteSub(sub) {
 }
 
 async function loadCorte() {
+  let kpiOk = false, hourlyOk = false, baselineOk = false, recentOk = false;
+  
+  // 1) KPIs
   try {
-    // Parallel: KPIs + hourly + baseline + recent events
-    const [kpiArr, hourly, baseline, recent] = await Promise.all([
-      sbRpc("fn_kpi_live", { p_machine_id: CORTE_MACHINE }),
-      sbRpc("fn_hourly_today", { p_machine_id: CORTE_MACHINE }),
-      sbRpc("fn_hourly_baseline", { p_machine_id: CORTE_MACHINE, p_days: 30 }).catch(() => []),
-      sbQuery("cortes_eventos", `machine_id=eq.${CORTE_MACHINE}&production_date=eq.${todayStr()}&order=data_inicio_local.desc&limit=30`).catch(() => []),
-    ]);
-
+    const kpiArr = await sbRpc("fn_kpi_live", { p_machine_id: CORTE_MACHINE });
     corteKpi = Array.isArray(kpiArr) ? kpiArr[0] : kpiArr;
-    corteHourly = hourly || [];
-    corteBaseline = baseline || [];
-
-    renderCorteKpis();
-    renderCorteHourly();
-    renderCorteRecent(recent);
+    kpiOk = true;
+    console.log("[Corte] KPIs:", corteKpi);
   } catch(e) {
-    console.error("loadCorte:", e);
-    toast("Corte: " + e.message, "error");
+    console.error("[Corte] fn_kpi_live failed:", e.message);
+    toast("Corte KPIs: " + e.message, "error");
   }
+  
+  // 2) Hourly
+  try {
+    corteHourly = await sbRpc("fn_hourly_today", { p_machine_id: CORTE_MACHINE }) || [];
+    hourlyOk = true;
+    console.log("[Corte] Hourly:", corteHourly.length, "rows");
+  } catch(e) {
+    console.error("[Corte] fn_hourly_today failed:", e.message);
+    corteHourly = [];
+  }
+  
+  // 3) Baseline
+  try {
+    corteBaseline = await sbRpc("fn_hourly_baseline", { p_machine_id: CORTE_MACHINE, p_days: 30 }) || [];
+    baselineOk = true;
+    console.log("[Corte] Baseline:", corteBaseline.length, "rows");
+  } catch(e) {
+    console.error("[Corte] fn_hourly_baseline failed:", e.message);
+    corteBaseline = [];
+  }
+  
+  // 4) Recent events (direct table query — may fail with RLS)
+  let recent = [];
+  try {
+    recent = await sbQuery("cortes_eventos", `machine_id=eq.${CORTE_MACHINE}&production_date=eq.${todayStr()}&order=data_inicio_local.desc&limit=30`);
+    recentOk = true;
+    console.log("[Corte] Recent events:", recent.length);
+  } catch(e) {
+    console.error("[Corte] cortes_eventos query failed (RLS?):", e.message);
+    // Try fallback via RPC if available
+    try {
+      recent = await sbRpc("fn_recent_cuts", { p_machine_id: CORTE_MACHINE, p_limit: 30 }) || [];
+      recentOk = true;
+      console.log("[Corte] Recent via RPC:", recent.length);
+    } catch(e2) {
+      console.warn("[Corte] fn_recent_cuts also failed:", e2.message);
+    }
+  }
+  
+  // Render what we have
+  renderCorteKpis();
+  if (hourlyOk || baselineOk) renderCorteHourly();
+  renderCorteRecent(recent);
+  
+  // Status summary
+  const status = [
+    kpiOk ? "✓ KPIs" : "✕ KPIs",
+    hourlyOk ? "✓ Hourly" : "✕ Hourly", 
+    baselineOk ? "✓ Baseline" : "✕ Baseline",
+    recentOk ? "✓ Eventos" : "✕ Eventos",
+  ].join(" | ");
+  console.log("[Corte] Status:", status);
+  if (!kpiOk && !hourlyOk) toast("Corte: no se pudieron cargar los datos. Verificar RPCs.", "error");
 }
 
 function renderCorteKpis() {
@@ -995,12 +1040,16 @@ function renderCorteKpis() {
   }
   const k = corteKpi;
 
-  // Semáforo
-  const estado = k.estado || "ROJO";
-  qs("#cSemaforo").textContent = estado === "VERDE" ? "✓" : estado === "AMARILLO" ? "!" : "✕";
-  qs("#cSemaforo").className = `semaforo ${estado}`;
-  const minDesde = Math.max(0, k.min_desde_ultimo || 0);
-  qs("#cSemaforoLabel").textContent = minDesde <= 0 ? "activo ahora" : `hace ${Math.round(minDesde)} min`;
+  // Semáforo — handle SIN_DATOS
+  const estado = k.estado || "SIN_DATOS";
+  const estadoClass = (estado === "VERDE" || estado === "AMARILLO" || estado === "ROJO") ? estado : "";
+  qs("#cSemaforo").textContent = estado === "VERDE" ? "✓" : estado === "AMARILLO" ? "!" : estado === "ROJO" ? "✕" : "—";
+  qs("#cSemaforo").className = `semaforo ${estadoClass}`;
+  qs("#cSemaforo").style.background = estadoClass ? "" : "var(--border)";
+  qs("#cSemaforo").style.color = estadoClass ? "" : "var(--text-3)";
+  qs("#cSemaforo").style.boxShadow = estadoClass ? "" : "none";
+  const minDesde = k.min_desde_ultimo != null ? Math.max(0, k.min_desde_ultimo) : null;
+  qs("#cSemaforoLabel").textContent = estado === "SIN_DATOS" ? "sin datos hoy" : minDesde != null ? (minDesde <= 0 ? "activo ahora" : `hace ${Math.round(minDesde)} min`) : "—";
 
   // KPIs
   qs("#cPlacasHoy").textContent = k.placas_hoy || 0;
@@ -1018,12 +1067,13 @@ function renderCorteKpis() {
   } else {
     qs("#cUltimoCorte").textContent = "—";
   }
-  qs("#cUltimoCorteSub").textContent = minDesde > 0 ? `hace ${Math.round(minDesde)} min` : "ahora";
+  qs("#cUltimoCorteSub").textContent = minDesde != null && minDesde > 0 ? `hace ${Math.round(minDesde)} min` : (k.ultimo_corte_local ? "ahora" : "sin actividad");
 
   // Minutos corte
-  qs("#cMinutosCorte").textContent = k.minutos_corte_hoy ? `${Math.round(k.minutos_corte_hoy)}′` : "—";
+  const minCorte = Number(k.minutos_corte_hoy || 0);
+  qs("#cMinutosCorte").textContent = minCorte > 0 ? `${Math.round(minCorte)}′` : "0′";
   const arranqueMin = k.demora_arranque_min;
-  qs("#cMinutosCorteSub").textContent = arranqueMin != null ? `arranque: ${arranqueMin > 0 ? "+" + Math.round(arranqueMin) + " min" : "a tiempo"}` : "";
+  qs("#cMinutosCorteSub").textContent = arranqueMin != null ? `arranque: ${arranqueMin > 0 ? "+" + Math.round(arranqueMin) + " min" : "a tiempo"}` : "sin arranque";
   
   qs("#cTarget").textContent = k.target_plates || "—";
 }
@@ -1031,18 +1081,25 @@ function renderCorteKpis() {
 function renderCorteHourly() {
   const chart = qs("#cHourlyChart");
   
-  // Build hourly map
+  // Build hourly map — hora_local is ISO timestamp like "2026-02-19T07:00:00"
   const hourMap = {};
   for (const h of corteHourly) {
-    const hora = h.hora_local != null ? h.hora_local : null;
+    let hora = null;
+    if (h.hora_local != null) {
+      if (typeof h.hora_local === "string" && h.hora_local.includes("T")) {
+        hora = new Date(h.hora_local).getHours();
+      } else {
+        hora = Number(h.hora_local);
+      }
+    }
     if (hora != null) hourMap[hora] = h.placas || 0;
   }
   
-  // Build baseline map
+  // Build baseline map — fields: hour_of_day, avg_plates
   const blMap = {};
   for (const b of corteBaseline) {
-    const hora = b.hora_local != null ? b.hora_local : (b.hora_label != null ? parseInt(b.hora_label) : null);
-    if (hora != null) blMap[hora] = Number(b.avg_placas || 0);
+    const hora = b.hour_of_day != null ? Number(b.hour_of_day) : (b.hora_local != null ? Number(b.hora_local) : null);
+    if (hora != null) blMap[hora] = Number(b.avg_plates || b.avg_placas || 0);
   }
   
   const now = new Date();
@@ -1563,7 +1620,7 @@ async function loadQueue() {
     const [qData, ppData, corteKpiArr] = await Promise.all([
       sbQuery("production_queue_status", "order=priority.asc,created_at.asc"),
       sbQuery("vw_packing_service_progress", "").catch(() => []),
-      sbRpc("fn_kpi_live", { p_machine_id: "CORTE_1" }).catch(() => []),
+      sbRpc("fn_kpi_live", { p_machine_id: "CORTE_1" }).catch(e => { console.warn("[Cola] Corte KPI failed:", e.message); return []; }),
     ]);
     queueData = qData;
     
