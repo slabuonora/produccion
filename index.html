@@ -188,6 +188,36 @@
 
     /* ── Corte station ── */
     .semaforo { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; margin: 0 auto 4px; transition: all .3s; }
+
+    /* ── Analytics panel ── */
+    .ai-summary { padding: 16px 20px; background: linear-gradient(135deg, #1e293b, #334155); color: #e2e8f0; border-radius: var(--radius); margin-bottom: 16px; font-size: 14px; line-height: 1.7; }
+    html.dark .ai-summary { background: linear-gradient(135deg, #0f172a, #1e293b); }
+    .ai-summary .ai-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(99,102,241,.25); color: #a5b4fc; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 12px; margin-bottom: 10px; }
+    .ai-summary p { margin: 0; }
+    .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; } }
+    .insight-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; border-left: 3px solid var(--accent); }
+    .insight-card.high { border-left-color: #ef4444; }
+    .insight-card.medium { border-left-color: #eab308; }
+    .insight-card.low { border-left-color: #22c55e; }
+    .insight-card .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .insight-card .insight-evidence { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+    .rec-list { display: flex; flex-direction: column; gap: 10px; }
+    .rec-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .rec-num { min-width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .rec-body { flex: 1; }
+    .rec-action { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .rec-impact { font-size: 12px; color: var(--success); }
+    .rec-effort { font-size: 11px; color: var(--text-3); margin-left: 10px; }
+    .corr-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 6px; }
+    .corr-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+    .corr-fill.neg { background: #ef4444; }
+    .corr-fill.pos { background: #22c55e; }
+    .kpi-change { font-size: 12px; font-weight: 600; }
+    .kpi-change.up { color: var(--success); }
+    .kpi-change.down { color: var(--danger); }
+    .analytics-loading { text-align: center; padding: 60px 20px; color: var(--text-3); }
+    .analytics-loading .spinner { width: 28px; height: 28px; margin-bottom: 12px; }
     .semaforo.VERDE { background: #22c55e; color: white; box-shadow: 0 0 16px rgba(34,197,94,.4); }
     .semaforo.AMARILLO { background: #eab308; color: white; box-shadow: 0 0 16px rgba(234,179,8,.4); }
     .semaforo.ROJO { background: #ef4444; color: white; box-shadow: 0 0 16px rgba(239,68,68,.4); animation: pulse-red 1.5s ease-in-out infinite; }
@@ -592,6 +622,7 @@
     <button class="nav-tab active" onclick="switchCorteSub('hoy')" id="corte-hoy">Hoy en vivo</button>
     <button class="nav-tab" onclick="switchCorteSub('servicios')" id="corte-servicios">Servicios</button>
     <button class="nav-tab" onclick="switchCorteSub('tendencia')" id="corte-tendencia">Tendencia</button>
+    <button class="nav-tab" onclick="switchCorteSub('analytics')" id="corte-analytics">🤖 Analytics IA</button>
   </div>
 
   <!-- SUB: HOY EN VIVO -->
@@ -747,6 +778,111 @@
     </div>
 
   </div><!-- end corte-panel-tendencia -->
+
+  <!-- SUB: ANALYTICS IA -->
+  <div id="corte-panel-analytics" style="display:none">
+
+    <!-- Loading state -->
+    <div id="caLoading" class="analytics-loading">
+      <div class="spinner" style="display:inline-block"></div>
+      <div>Consultando agente de analytics...</div>
+    </div>
+
+    <!-- Content (hidden until loaded) -->
+    <div id="caContent" style="display:none">
+
+      <!-- AI Executive Summary -->
+      <div class="ai-summary" id="caSummary">
+        <div class="ai-badge">🤖 Análisis IA</div>
+        <p id="caSummaryText">—</p>
+      </div>
+
+      <!-- KPI Cards Row -->
+      <div class="metrics-row" style="grid-template-columns:repeat(6,1fr)">
+        <div class="metric-card">
+          <div class="metric-label">Promedio 2026</div>
+          <div class="metric-value" id="caAvg2026">—</div>
+          <div class="metric-sub"><span class="kpi-change" id="caYoyChange">—</span> vs 2025</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Récord</div>
+          <div class="metric-value" id="caRecord">—</div>
+          <div class="metric-sub" id="caRecordSub">placas/día</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Utilización</div>
+          <div class="metric-value" id="caUtil">—</div>
+          <div class="metric-sub"><span class="kpi-change" id="caUtilChange">—</span> vs 2025</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Demora arranque</div>
+          <div class="metric-value" id="caDelay">—</div>
+          <div class="metric-sub"><span class="kpi-change" id="caDelaySub">—</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Mejor día</div>
+          <div class="metric-value" id="caBestDay">—</div>
+          <div class="metric-sub" id="caBestDayAvg">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Últimos 7 días</div>
+          <div class="metric-value" id="caRecent7">—</div>
+          <div class="metric-sub">promedio</div>
+        </div>
+      </div>
+
+      <!-- Alertas activas -->
+      <div class="card" id="caAlertsCard" style="display:none">
+        <div class="card-title">⚠️ Alertas activas <span class="badge" id="caAlertsBadge">0</span></div>
+        <div id="caAlertsList"></div>
+      </div>
+
+      <!-- Patrones ocultos -->
+      <div class="card">
+        <div class="card-title">🔍 Patrones ocultos detectados</div>
+        <div class="insight-grid" id="caPatterns"></div>
+      </div>
+
+      <!-- Correlaciones -->
+      <div class="card">
+        <div class="card-title">📊 Correlaciones clave</div>
+        <div id="caCorrelations"></div>
+      </div>
+
+      <!-- Recomendaciones -->
+      <div class="card">
+        <div class="card-title">🎯 Recomendaciones priorizadas</div>
+        <div class="rec-list" id="caRecommendations"></div>
+      </div>
+
+      <!-- Anomalías -->
+      <div class="card">
+        <div class="card-title">🚨 Anomalías detectadas</div>
+        <div id="caAnomalies"></div>
+      </div>
+
+      <!-- Risks & Opportunities -->
+      <div class="insight-grid">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">⚡ Oportunidades</div>
+          <ul id="caOpportunities" style="list-style:none;padding:0;font-size:13px;color:var(--text-2)"></ul>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">⚠️ Riesgos</div>
+          <ul id="caRisks" style="list-style:none;padding:0;font-size:13px;color:var(--text-2)"></ul>
+        </div>
+      </div>
+
+      <!-- Refresh button -->
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-secondary" onclick="loadCorteAnalytics(true)" id="caRefreshBtn">
+          🔄 Actualizar análisis (usa créditos AI)
+        </button>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px" id="caTimestamp">—</div>
+      </div>
+
+    </div><!-- end caContent -->
+  </div><!-- end corte-panel-analytics -->
 
 </div><!-- container -->
 </div><!-- end panel-corte -->
@@ -977,7 +1113,7 @@ let corteBaseline = [];
 let corteDaily = [];
 
 function switchCorteSub(sub) {
-  ["hoy","servicios","tendencia"].forEach(s => {
+  ["hoy","servicios","tendencia","analytics"].forEach(s => {
     const p = qs(`#corte-panel-${s}`);
     const t = qs(`#corte-${s}`);
     if (p) p.style.display = s === sub ? "" : "none";
@@ -985,6 +1121,7 @@ function switchCorteSub(sub) {
   });
   if (sub === "servicios") loadCorteServicios();
   if (sub === "tendencia") loadCorteTendencia();
+  if (sub === "analytics") loadCorteAnalytics();
 }
 
 async function loadCorte() {
@@ -1314,6 +1451,364 @@ async function loadCorteTendencia() {
     console.error("loadCorteTendencia:", e);
     toast("Tendencia corte: " + e.message, "error");
   }
+}
+
+// ══════════════════════════════════════════════
+// CORTE: ANALYTICS IA
+// ══════════════════════════════════════════════
+let caCache = null;
+let caCacheTime = 0;
+const CA_CACHE_TTL = 5 * 60 * 1000; // 5 min cache for deterministic, skip for AI
+
+async function fetchAgent(action, extra = '') {
+  const url = `${SUPABASE_URL}/functions/v1/corte-analytics-agent?action=${action}${extra}`;
+  const r = await fetch(url, {
+    headers: { "apikey": SUPABASE_ANON, "Authorization": `Bearer ${SUPABASE_ANON}` }
+  });
+  if (!r.ok) throw new Error(`Agent ${action}: ${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+async function loadCorteAnalytics(forceAI = false) {
+  const loading = qs("#caLoading");
+  const content = qs("#caContent");
+  const refreshBtn = qs("#caRefreshBtn");
+  
+  // Use cache if available and not forcing AI
+  if (!forceAI && caCache && (Date.now() - caCacheTime < CA_CACHE_TTL)) {
+    loading.style.display = "none";
+    content.style.display = "";
+    return;
+  }
+  
+  loading.style.display = "";
+  content.style.display = "none";
+  if (refreshBtn) refreshBtn.disabled = true;
+  
+  try {
+    // Fetch KPIs (always fast, deterministic)
+    const kpis = await fetchAgent("kpis");
+    
+    // If forceAI, also fetch full AI analysis
+    let aiAnalysis = null;
+    if (forceAI) {
+      loading.querySelector("div:last-child").textContent = "Analizando con IA... (puede tardar 15-20s)";
+      try {
+        aiAnalysis = await fetchAgent("analyze");
+      } catch(e) {
+        console.warn("[Analytics] AI analysis failed, using deterministic:", e.message);
+      }
+    }
+    
+    // If no AI, try deterministic insights
+    let discipline = null, alerts = null;
+    if (!aiAnalysis || !aiAnalysis.analysis?.executive_summary) {
+      [discipline, alerts] = await Promise.all([
+        fetchAgent("discipline"),
+        fetchAgent("alerts", "&days=30")
+      ]);
+    }
+    
+    // Render everything
+    renderAnalyticsKPIs(kpis);
+    
+    if (aiAnalysis?.analysis?.executive_summary) {
+      renderAIAnalysis(aiAnalysis);
+    } else {
+      renderDeterministicAnalysis(kpis, discipline, alerts);
+    }
+    
+    caCache = { kpis, aiAnalysis, discipline, alerts };
+    caCacheTime = Date.now();
+    
+    loading.style.display = "none";
+    content.style.display = "";
+    
+    const ts = new Date().toLocaleString("es-UY");
+    qs("#caTimestamp").textContent = `Última actualización: ${ts}${aiAnalysis?.analysis?.executive_summary ? " (con IA)" : " (determinístico)"}`;
+    
+  } catch(e) {
+    console.error("[Analytics] Error:", e);
+    loading.innerHTML = `<div style="color:var(--danger)">Error al cargar analytics: ${e.message}</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadCorteAnalytics()" style="margin-top:12px">Reintentar</button>`;
+  } finally {
+    if (refreshBtn) refreshBtn.disabled = false;
+  }
+}
+
+function renderAnalyticsKPIs(kpis) {
+  const cy = kpis.current_year || {};
+  const vs = kpis.vs_last_year || {};
+  const cap = kpis.capacity || {};
+  const disc = kpis.discipline || {};
+  const pat = kpis.patterns || {};
+  
+  qs("#caAvg2026").textContent = cy.avg_placas_dia || "—";
+  
+  const yoy = vs.placas_change_pct;
+  if (yoy != null) {
+    const el = qs("#caYoyChange");
+    el.textContent = `${yoy > 0 ? "+" : ""}${yoy}%`;
+    el.className = `kpi-change ${yoy >= 0 ? "up" : "down"}`;
+  }
+  
+  qs("#caRecord").textContent = cap.record || "—";
+  qs("#caUtil").textContent = cy.utilizacion ? cy.utilizacion + "%" : "—";
+  
+  const uc = vs.utilizacion_change;
+  if (uc != null) {
+    const el = qs("#caUtilChange");
+    el.textContent = `${uc > 0 ? "+" : ""}${uc}pp`;
+    el.className = `kpi-change ${uc >= 0 ? "up" : "down"}`;
+  }
+  
+  // Demora arranque - convert to h:mm
+  const dm = disc.avg_demora_2026;
+  if (dm != null) {
+    const h = Math.floor(dm / 60);
+    const m = Math.round(dm % 60);
+    qs("#caDelay").textContent = h > 0 ? `${h}h${String(m).padStart(2,"0")}` : `${m}′`;
+    const mejora = disc.mejora_min;
+    if (mejora) {
+      const el = qs("#caDelaySub");
+      el.innerHTML = `<span class="kpi-change up">-${Math.round(mejora)}min</span> vs 2025`;
+    }
+  }
+  
+  qs("#caBestDay").textContent = pat.best_day || "—";
+  qs("#caBestDayAvg").textContent = pat.best_day_avg ? `${pat.best_day_avg} placas/día` : "";
+  qs("#caRecent7").textContent = pat.recent_7d_avg || "—";
+}
+
+function renderAIAnalysis(data) {
+  const a = data.analysis || {};
+  
+  // Summary
+  qs("#caSummaryText").textContent = a.executive_summary || "Sin resumen disponible";
+  
+  // Alerts
+  const alertSum = data.alerts_summary || {};
+  const totalAlerts = (alertSum.criticals || 0) + (alertSum.warnings || 0);
+  if (totalAlerts > 0) {
+    qs("#caAlertsCard").style.display = "";
+    qs("#caAlertsBadge").textContent = totalAlerts;
+    qs("#caAlertsBadge").style.background = alertSum.criticals > 0 ? "var(--danger)" : "var(--warn)";
+    qs("#caAlertsBadge").style.color = "white";
+    
+    let alertHtml = "";
+    if (alertSum.longest_negative_streak) {
+      const s = alertSum.longest_negative_streak;
+      alertHtml += `<div style="padding:8px 12px;background:var(--bg);border-radius:6px;margin-bottom:8px;font-size:12px">
+        <strong>Peor racha:</strong> ${s.dias} días (${s.fecha_inicio} → ${s.fecha_fin}), promedio ${s.avg_placas} placas vs referencia ${s.referencia}
+      </div>`;
+    }
+    qs("#caAlertsList").innerHTML = alertHtml;
+  } else {
+    qs("#caAlertsCard").style.display = "none";
+  }
+  
+  // Patterns
+  renderPatterns(a.hidden_patterns || []);
+  
+  // Correlations
+  renderCorrelations(a.correlations || []);
+  
+  // Recommendations
+  renderRecommendations(a.recommendations || []);
+  
+  // Anomalies
+  renderAnomalies(a.anomalies || []);
+  
+  // Opportunities & Risks
+  renderListItems("#caOpportunities", a.opportunities || [], "✅");
+  renderListItems("#caRisks", a.risks || [], "⚠️");
+}
+
+function renderDeterministicAnalysis(kpis, discipline, alerts) {
+  // Build summary from KPIs
+  const cy = kpis.current_year || {};
+  const vs = kpis.vs_last_year || {};
+  const disc = kpis.discipline || {};
+  
+  const summaryParts = [];
+  if (vs.placas_change_pct) summaryParts.push(`Producción 2026 subió ${vs.placas_change_pct}% vs 2025.`);
+  if (disc.avg_demora_2026) {
+    const h = Math.floor(disc.avg_demora_2026 / 60);
+    const m = Math.round(disc.avg_demora_2026 % 60);
+    summaryParts.push(`Demora promedio de arranque: ${h}h${String(m).padStart(2,"0")} (mejoró ${Math.round(disc.mejora_min || 0)} min vs 2025).`);
+  }
+  summaryParts.push("Usá el botón 'Actualizar análisis' para obtener insights profundos con IA.");
+  
+  qs("#caSummaryText").textContent = summaryParts.join(" ");
+  
+  // Alerts from fn_cortes_alertas
+  if (alerts) {
+    const alertList = Array.isArray(alerts) ? alerts : (alerts.alerts || []);
+    const criticals = alertList.filter(a => a.tipo === "critico" || a.severity === "critical");
+    const warnings = alertList.filter(a => a.tipo === "warning" || a.severity === "warning");
+    const total = criticals.length + warnings.length;
+    
+    if (total > 0) {
+      qs("#caAlertsCard").style.display = "";
+      qs("#caAlertsBadge").textContent = total;
+      qs("#caAlertsBadge").style.background = criticals.length > 0 ? "var(--danger)" : "var(--warn)";
+      qs("#caAlertsBadge").style.color = "white";
+      qs("#caAlertsList").innerHTML = alertList.slice(0, 5).map(a => 
+        `<div style="padding:8px 12px;background:var(--bg);border-radius:6px;margin-bottom:6px;font-size:12px">
+          <strong>${a.alerta || a.title || "Alerta"}:</strong> ${a.detalle || a.description || ""}
+        </div>`
+      ).join("");
+    } else {
+      qs("#caAlertsCard").style.display = "none";
+    }
+  }
+  
+  // Patterns from discipline data
+  const patterns = [];
+  if (discipline) {
+    const corr = discipline.delay_vs_production_correlation;
+    if (corr != null) {
+      patterns.push({
+        pattern: `Correlación arranque ↔ producción: ${corr}`,
+        evidence: "Cada hora menos de demora se traduce directamente en más placas producidas. Esta correlación es la palanca más importante.",
+        impact: "alto"
+      });
+    }
+    const dt = discipline.recent_dead_time;
+    if (dt) {
+      patterns.push({
+        pattern: `Tiempo muerto promedio: ${Math.round(dt.avg_pct || 0)}%`,
+        evidence: `${Math.round(dt.avg_minutes || 0)} minutos promedio de gaps entre cortes.`,
+        impact: dt.avg_pct > 30 ? "alto" : "medio"
+      });
+    }
+  }
+  const pat = kpis.patterns || {};
+  if (pat.worst_day) {
+    patterns.push({
+      pattern: `${pat.worst_day} es el peor día (${pat.worst_day_avg} placas)`,
+      evidence: `Mejor día: ${pat.best_day} (${pat.best_day_avg} placas). Diferencia de ${(pat.best_day_avg - pat.worst_day_avg).toFixed(1)} placas entre mejor y peor.`,
+      impact: "medio"
+    });
+  }
+  renderPatterns(patterns);
+  
+  // Deterministic recommendations
+  const recs = [];
+  const disc2 = kpis.discipline || {};
+  if (disc2.avg_demora_2026 > 60) {
+    recs.push({
+      action: `Reducir demora de arranque de ${Math.round(disc2.avg_demora_2026)} min a <60 min`,
+      expected_impact: "+15-20 placas/día",
+      priority: 1, effort: "medio"
+    });
+  }
+  const cap = kpis.capacity || {};
+  if (cap.utilizacion_historica < 30) {
+    recs.push({
+      action: `Aumentar utilización del ${cap.utilizacion_historica}% al 50%+ con material pre-preparado`,
+      expected_impact: "+10-15 placas/día",
+      priority: 2, effort: "medio"
+    });
+  }
+  if (pat.worst_day_avg && pat.best_day_avg) {
+    recs.push({
+      action: `Investigar caída de ${pat.worst_day}: preparar material la noche anterior`,
+      expected_impact: `+${(pat.best_day_avg - pat.worst_day_avg).toFixed(0)} placas ese día`,
+      priority: 3, effort: "bajo"
+    });
+  }
+  renderRecommendations(recs);
+  
+  // Correlations from discipline
+  const corrs = [];
+  if (discipline?.delay_vs_production_correlation != null) {
+    corrs.push({
+      variables: "Demora arranque vs Placas/día",
+      finding: "Correlación negativa fuerte: menos demora = más producción",
+      r_value: discipline.delay_vs_production_correlation
+    });
+  }
+  renderCorrelations(corrs);
+  
+  // Clear anomalies and lists for deterministic mode
+  qs("#caAnomalies").innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:8px">Ejecutá el análisis con IA para detectar anomalías específicas.</div>';
+  renderListItems("#caOpportunities", [
+    `Récord de ${cap.record} placas demuestra capacidad real de la máquina`,
+    `Últimos 7 días: ${pat.recent_7d_avg} promedio — tendencia fuerte al alza`
+  ], "✅");
+  renderListItems("#caRisks", [
+    `Gap al target: ${Math.abs(cap.gap_to_target || 0)} placas por debajo del objetivo`,
+    `0% arranques a horario en toda la historia`
+  ], "⚠️");
+}
+
+function renderPatterns(patterns) {
+  qs("#caPatterns").innerHTML = patterns.map(p => {
+    const impact = (p.impact || "medio").toLowerCase();
+    return `<div class="insight-card ${impact}">
+      <div class="insight-title">${escH(p.pattern)}</div>
+      <div class="insight-evidence">${escH(p.evidence)}</div>
+    </div>`;
+  }).join("") || '<div class="empty" style="padding:16px">Sin patrones detectados</div>';
+}
+
+function renderCorrelations(correlations) {
+  qs("#caCorrelations").innerHTML = correlations.map(c => {
+    const r = Number(c.r_value) || 0;
+    const absR = Math.abs(r);
+    const pct = absR * 100;
+    const cls = r < 0 ? "neg" : "pos";
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:600">${escH(c.variables)}</div>
+          <div style="font-size:12px;color:var(--text-2)">${escH(c.finding)}</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${r < 0 ? "var(--danger)" : "var(--success)"}">${r.toFixed(2)}</div>
+      </div>
+      <div class="corr-bar"><div class="corr-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join("") || '<div style="font-size:12px;color:var(--text-3);padding:8px">Sin correlaciones disponibles</div>';
+}
+
+function renderRecommendations(recs) {
+  const sorted = [...recs].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+  qs("#caRecommendations").innerHTML = sorted.map((r, i) => {
+    const effortBadge = r.effort === "bajo" ? "🟢 Bajo esfuerzo" : r.effort === "medio" ? "🟡 Esfuerzo medio" : "🔴 Alto esfuerzo";
+    return `<div class="rec-item">
+      <div class="rec-num">${i + 1}</div>
+      <div class="rec-body">
+        <div class="rec-action">${escH(r.action)}</div>
+        <div><span class="rec-impact">${escH(r.expected_impact)}</span><span class="rec-effort">${effortBadge}</span></div>
+      </div>
+    </div>`;
+  }).join("") || '<div class="empty" style="padding:16px">Sin recomendaciones</div>';
+}
+
+function renderAnomalies(anomalies) {
+  qs("#caAnomalies").innerHTML = anomalies.map(a => 
+    `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent);min-width:110px;font-weight:600">${escH(a.date_range)}</div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${escH(a.description)}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">Posible causa: ${escH(a.possible_cause)}</div>
+        </div>
+      </div>
+    </div>`
+  ).join("") || '<div style="font-size:12px;color:var(--text-3);padding:8px">Sin anomalías detectadas</div>';
+}
+
+function renderListItems(selector, items, emoji) {
+  const list = qs(selector);
+  if (!list) return;
+  const arr = Array.isArray(items) ? items : [];
+  list.innerHTML = arr.map(item => 
+    `<li style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px">
+      <span>${emoji}</span><span>${escH(typeof item === "string" ? item : item.text || JSON.stringify(item))}</span>
+    </li>`
+  ).join("") || `<li style="padding:6px 0;color:var(--text-3)">Sin datos</li>`;
 }
 
 // ══════════════════════════════════════════════
