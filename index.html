@@ -630,6 +630,32 @@
       </div>
     </div>
 
+    <!-- Utilización + Ritmo + Proyección -->
+    <div class="metrics-row" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="metric-card">
+        <div class="metric-label">Utilización efectiva</div>
+        <div class="metric-value" id="cUtilPct">—</div>
+        <div style="height:10px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:8px;position:relative">
+          <div style="position:absolute;top:0;left:0;height:100%;background:rgba(234,179,8,.35);border-radius:99px;transition:width .4s" id="cElapsedBar"></div>
+          <div style="position:absolute;top:0;left:0;height:100%;background:var(--accent);border-radius:99px;transition:width .4s" id="cUtilBar"></div>
+        </div>
+        <div class="metric-sub" style="display:flex;justify-content:space-between;margin-top:4px">
+          <span id="cUtilDetail">—</span>
+          <span id="cGapDetail">—</span>
+        </div>
+      </div>
+      <div class="metric-card" id="cPaceCard">
+        <div class="metric-label">Ritmo vs objetivo</div>
+        <div class="metric-value" id="cPaceValue">—</div>
+        <div class="metric-sub">Esperado: <span id="cExpected">—</span> placas</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Proyección cierre</div>
+        <div class="metric-value" id="cForecast">—</div>
+        <div class="metric-sub">si mantiene el ritmo actual</div>
+      </div>
+    </div>
+
     <!-- Barras por hora + baseline -->
     <div class="card">
       <div class="card-title">
@@ -662,13 +688,11 @@
         <table class="cycle-table">
           <thead>
             <tr>
-              <th>Programa</th>
-              <th style="text-align:right">Cantidad</th>
-              <th style="text-align:right">Medida (L×A×E)</th>
-              <th style="text-align:right">Área m²</th>
-              <th style="text-align:right">Tiempo</th>
               <th>Inicio</th>
-              <th>Fin</th>
+              <th style="text-align:right">Duración</th>
+              <th style="text-align:right">Placas</th>
+              <th>Programa</th>
+              <th>Archivo</th>
             </tr>
           </thead>
           <tbody id="cRecentBody"></tbody>
@@ -997,21 +1021,21 @@ async function loadCorte() {
     corteBaseline = [];
   }
   
-  // 4) Recent events (direct table query — may fail with RLS)
+  // 4) Recent events via RPC (fn_recent_cuts)
   let recent = [];
   try {
-    recent = await sbQuery("cortes_eventos", `machine_id=eq.${CORTE_MACHINE}&production_date=eq.${todayStr()}&order=data_inicio_local.desc&limit=30`);
+    recent = await sbRpc("fn_recent_cuts", { p_machine_id: CORTE_MACHINE, p_limit: 30 }) || [];
     recentOk = true;
-    console.log("[Corte] Recent events:", recent.length);
+    console.log("[Corte] Recent cuts:", recent.length);
   } catch(e) {
-    console.error("[Corte] cortes_eventos query failed (RLS?):", e.message);
-    // Try fallback via RPC if available
+    console.warn("[Corte] fn_recent_cuts failed:", e.message);
+    // Fallback: direct table query
     try {
-      recent = await sbRpc("fn_recent_cuts", { p_machine_id: CORTE_MACHINE, p_limit: 30 }) || [];
+      recent = await sbQuery("cortes_eventos", `machine_id=eq.${CORTE_MACHINE}&production_date=eq.${todayStr()}&order=data_inicio_local.desc&limit=30`);
       recentOk = true;
-      console.log("[Corte] Recent via RPC:", recent.length);
+      console.log("[Corte] Recent via table:", recent.length);
     } catch(e2) {
-      console.warn("[Corte] fn_recent_cuts also failed:", e2.message);
+      console.warn("[Corte] cortes_eventos query also failed:", e2.message);
     }
   }
   
@@ -1076,6 +1100,43 @@ function renderCorteKpis() {
   qs("#cMinutosCorteSub").textContent = arranqueMin != null ? `arranque: ${arranqueMin > 0 ? "+" + Math.round(arranqueMin) + " min" : "a tiempo"}` : "sin arranque";
   
   qs("#cTarget").textContent = k.target_plates || "—";
+  
+  // Utilización, Ritmo, Proyección (same logic as TV dashboard)
+  const target = Number(k.target_plates || 50);
+  const mins = Number(k.minutos_corte_hoy || 0);
+  const utilPct = Math.max(0, Math.min(100, (mins / 540) * 100));
+  
+  qs("#cUtilPct").textContent = utilPct.toFixed(1) + "%";
+  qs("#cUtilBar").style.width = utilPct + "%";
+  
+  // Elapsed time in shift
+  const now = new Date();
+  const shiftStart = new Date(now); shiftStart.setHours(7, 30, 0, 0);
+  let elapsedMin = Math.max(0, Math.min(540, (now - shiftStart) / 60000));
+  const elapsedPct = (elapsedMin / 540) * 100;
+  qs("#cElapsedBar").style.width = elapsedPct + "%";
+  qs("#cUtilDetail").textContent = `${Math.round(mins)} / 540 min`;
+  
+  // Gap (idle time)
+  const gap = Math.max(0, elapsedMin - mins);
+  qs("#cGapDetail").textContent = gap > 0 ? `Brecha: ${Math.round(gap)} min` : "";
+  
+  // Pace vs target
+  const expected = (elapsedMin / 540) * target;
+  const diff = (k.placas_hoy || 0) - expected;
+  const paceCard = qs("#cPaceCard");
+  paceCard.style.borderLeft = diff >= 0 ? "3px solid var(--success)" : diff >= -5 ? "3px solid #eab308" : "3px solid #ef4444";
+  qs("#cPaceValue").textContent = diff >= 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1);
+  qs("#cPaceValue").style.color = diff >= 0 ? "var(--success)" : diff >= -5 ? "#eab308" : "#ef4444";
+  qs("#cExpected").textContent = expected.toFixed(1);
+  
+  // Forecast
+  let forecast = 0;
+  if (elapsedMin > 30) {
+    forecast = ((k.placas_hoy || 0) / elapsedMin) * 540;
+  }
+  qs("#cForecast").textContent = forecast > 0 ? `${Math.round(forecast)} placas` : "—";
+  qs("#cForecast").style.color = forecast >= target ? "var(--success)" : forecast >= target * 0.8 ? "#eab308" : "var(--text-2)";
 }
 
 function renderCorteHourly() {
@@ -1144,16 +1205,24 @@ function renderCorteHourly() {
 
 function renderCorteRecent(events) {
   qs("#cRecentCount").textContent = events.length;
+  if (!events.length) {
+    qs("#cRecentBody").innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-3)">Sin cortes hoy</td></tr>';
+    return;
+  }
+  // Fields from fn_recent_cuts: inicio_local, duracion_min, placas, programa, file_name
+  // OR from cortes_eventos: data_inicio_local, tempo_corte_s, quantidade, programa, file_name
   qs("#cRecentBody").innerHTML = events.map(e => {
-    const medida = [e.comprimento, e.largura, e.espessura].filter(v=>v).join(" × ");
+    const inicio = e.inicio_local || e.data_inicio_local;
+    const durMin = e.duracion_min != null ? Number(e.duracion_min).toFixed(1) + "′" : (e.tempo_corte_s ? fmtSec(e.tempo_corte_s) : "—");
+    const placas = e.placas ?? e.quantidade ?? 1;
+    const programa = e.programa || "—";
+    const archivo = e.file_name || "";
     return `<tr>
-      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(e.programa||"")}">${escH(e.programa||"—")}</td>
-      <td style="text-align:right;font-family:var(--mono)">${e.quantidade||1}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-2)">${medida || "—"}</td>
-      <td style="text-align:right;font-family:var(--mono)">${e.area_m2 ? Number(e.area_m2).toFixed(2) : "—"}</td>
-      <td style="text-align:right;font-family:var(--mono)">${e.tempo_corte_s ? fmtSec(e.tempo_corte_s) : "—"}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${e.data_inicio_local ? fmtTime(e.data_inicio_local) : "—"}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${e.data_termino_local ? fmtTime(e.data_termino_local) : "—"}</td>
+      <td style="font-family:var(--mono);font-size:12px">${inicio ? fmtTime(inicio) : "—"}</td>
+      <td style="text-align:right;font-family:var(--mono)">${durMin}</td>
+      <td style="text-align:right;font-family:var(--mono)">${placas}</td>
+      <td style="font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(programa)}">${escH(programa)}</td>
+      <td style="font-size:11px;color:var(--text-3);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(archivo)}">${escH(archivo)}</td>
     </tr>`;
   }).join("");
 }
