@@ -609,9 +609,9 @@
         <div class="metric-sub" id="cPlacasHoySub"></div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Eventos hoy</div>
-        <div class="metric-value" id="cEventosHoy">—</div>
-        <div class="metric-sub" id="cEventosHoySub"></div>
+        <div class="metric-label">Primer corte</div>
+        <div class="metric-value" id="cPrimerCorte">—</div>
+        <div class="metric-sub" id="cPrimerCorteSub"></div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Min / placa</div>
@@ -1079,8 +1079,27 @@ function renderCorteKpis() {
   qs("#cPlacasHoy").textContent = k.placas_hoy || 0;
   qs("#cPlacasHoySub").textContent = k.placas_ult_60 ? `${k.placas_ult_60} últ. 60 min` : "";
   
-  qs("#cEventosHoy").textContent = k.eventos_hoy || 0;
-  qs("#cEventosHoySub").textContent = k.eventos_ult_60 ? `${k.eventos_ult_60} últ. 60 min` : "";
+  // Primer corte + demora arranque
+  if (k.primer_corte_local) {
+    const t = new Date(k.primer_corte_local);
+    qs("#cPrimerCorte").textContent = t.toLocaleTimeString("es-UY", {hour:"2-digit",minute:"2-digit",hour12:false});
+    const demora = k.demora_arranque_min;
+    if (demora != null) {
+      const dm = Math.round(demora);
+      if (dm <= 0) {
+        qs("#cPrimerCorteSub").innerHTML = `<span style="color:var(--success)">a tiempo ✓</span>`;
+      } else if (dm <= 15) {
+        qs("#cPrimerCorteSub").innerHTML = `<span style="color:#eab308">+${dm} min vs 7:30</span>`;
+      } else {
+        qs("#cPrimerCorteSub").innerHTML = `<span style="color:#ef4444">+${dm} min vs 7:30</span>`;
+      }
+    } else {
+      qs("#cPrimerCorteSub").textContent = "";
+    }
+  } else {
+    qs("#cPrimerCorte").textContent = "—";
+    qs("#cPrimerCorteSub").textContent = "sin arranque";
+  }
   
   qs("#cMinPlaca").textContent = k.min_por_placa ? `${Number(k.min_por_placa).toFixed(1)}′` : "—";
   
@@ -1096,8 +1115,7 @@ function renderCorteKpis() {
   // Minutos corte
   const minCorte = Number(k.minutos_corte_hoy || 0);
   qs("#cMinutosCorte").textContent = minCorte > 0 ? `${Math.round(minCorte)}′` : "0′";
-  const arranqueMin = k.demora_arranque_min;
-  qs("#cMinutosCorteSub").textContent = arranqueMin != null ? `arranque: ${arranqueMin > 0 ? "+" + Math.round(arranqueMin) + " min" : "a tiempo"}` : "sin arranque";
+  qs("#cMinutosCorteSub").textContent = `${k.eventos_hoy || 0} eventos`;
   
   qs("#cTarget").textContent = k.target_plates || "—";
   
