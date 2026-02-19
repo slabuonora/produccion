@@ -1676,6 +1676,23 @@ async function calcPrepMaterial() {
       `service_id=in.(${selectedIds.join(",")})&select=service_id,materials_optimizations_json,itens_json,raw_detail_json,optimizations_json`
     );
     
+    // DEBUG: log the actual board data structure
+    console.log("[prep] Details fetched:", details.length, "services");
+    for (const d of details) {
+      const matOpt = d.materials_optimizations_json || {};
+      const itens = d.itens_json || {};
+      const raw = d.raw_detail_json || {};
+      console.log(`[prep] SVC ${d.service_id}:`, {
+        matOpt_boards: matOpt.boards?.length || 0,
+        matOpt_boards_sample: matOpt.boards?.[0],
+        itens_boards: itens.boards?.length || 0,
+        itens_boards_sample: itens.boards?.[0],
+        raw_materials_boards: raw.materials?.boards?.length || 0,
+        raw_materials_boards_sample: raw.materials?.boards?.[0],
+        raw_labour_cutting: raw.labour?.cutting,
+      });
+    }
+    
     // Map detail by service_id
     const detailMap = {};
     for (const d of details) detailMap[d.service_id] = d;
