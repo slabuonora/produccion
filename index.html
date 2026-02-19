@@ -3035,9 +3035,8 @@ async function loadCortePiezas() {
     }
 
     if (lastPieza) {
-      const raw = (lastPieza.printed_at || "").replace("+00","").replace("Z","");
-      const t = new Date(raw);
-      qs("#cpUltimaPieza").textContent = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+      const m = (lastPieza.printed_at || "").match(/(\d{2}):(\d{2}):(\d{2})/);
+      qs("#cpUltimaPieza").textContent = m ? `${m[1]}:${m[2]}:${m[3]}` : "—";
       qs("#cpUltimaPiezaSub").textContent = lastPieza.part_name || `#${lastPieza.part_id}`;
     } else {
       qs("#cpUltimaPieza").textContent = "—";
@@ -3155,10 +3154,9 @@ function renderPiezasFeed() {
   }
 
   body.innerHTML = cpFeedData.map(item => {
-    // Agent stores local time as UTC — extract time string directly
-    const raw = (item.printed_at || "").replace("+00","").replace("Z","");
-    const t = new Date(raw);
-    const timeStr = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    // Agent stores Montevideo local time — extract HH:MM:SS directly from string
+    const m = (item.printed_at || "").match(/(\d{2}):(\d{2}):(\d{2})/);
+    const timeStr = m ? `${m[1]}:${m[2]}:${m[3]}` : "—";
     const dims = item.part_c && item.part_l ? `${item.part_c}×${item.part_l}` : "—";
     return `<tr>
       <td style="font-family:monospace;font-weight:600;color:var(--warning)">${timeStr}</td>
