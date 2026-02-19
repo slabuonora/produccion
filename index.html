@@ -891,9 +891,11 @@ async function loadQueue() {
     // Auto-sync production queue from MobCloud
     try {
       const syncResult = await invokeFunction("production-service", { action: "sync-queue" });
-      if (syncResult.synced > 0) {
-        toast(`${syncResult.synced} servicios nuevos importados de MobCloud`, "success");
-      }
+      const msgs = [];
+      if (syncResult.synced > 0) msgs.push(`${syncResult.synced} nuevos`);
+      if (syncResult.updated > 0) msgs.push(`${syncResult.updated} actualizados`);
+      if (syncResult.cleaned > 0) msgs.push(`${syncResult.cleaned} eliminados`);
+      if (msgs.length) toast(`MobCloud: ${msgs.join(", ")}`, "success");
     } catch (e) {
       console.warn("sync-queue failed (offline?):", e.message);
     }
