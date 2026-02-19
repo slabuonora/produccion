@@ -248,6 +248,64 @@
     .track-days { display: flex; gap: 2px; align-items: flex-end; height: 36px; }
     .track-day-bar { flex: 1; border-radius: 2px 2px 0 0; background: var(--accent); opacity: .6; min-height: 2px; transition: height .3s; }
     .track-day-bar:hover { opacity: 1; }
+
+    /* ── Print / PDF export ── */
+    .print-header { display: none; }
+    @media print {
+      /* Reset: hide everything */
+      body > * { display: none !important; }
+      
+      /* Show only the print wrapper */
+      #printWrapper { 
+        display: block !important; 
+        position: static !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      #printWrapper * { visibility: visible; }
+      
+      /* Print header */
+      .print-header { 
+        display: block !important;
+        text-align: center; 
+        padding: 0 0 12px; 
+        border-bottom: 2px solid #333;
+        margin-bottom: 20px;
+        break-after: avoid;
+      }
+      .print-header h2 { font-size: 22px; margin: 0 0 4px; color: #1a1d23; font-weight: 700; }
+      .print-header .print-sub { font-size: 12px; color: #666; }
+      
+      /* Clean up cards for print */
+      .card, .metric-card, .insight-card, .rec-item, .ai-summary {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+      }
+      .ai-summary { background: #f1f5f9 !important; color: #1a1d23 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ai-badge { background: #e0e7ff !important; color: #4338ca !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .metrics-row { grid-template-columns: repeat(3, 1fr) !important; }
+      .insight-grid { grid-template-columns: 1fr 1fr !important; }
+      .insight-card.high { border-left: 3px solid #ef4444 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .insight-card.medium { border-left: 3px solid #eab308 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .rec-num { background: #2e5faa !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .corr-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .corr-fill.neg { background: #ef4444 !important; }
+      .corr-fill.pos { background: #22c55e !important; }
+      .kpi-change.up { color: #16a34a !important; }
+      .kpi-change.down { color: #dc2626 !important; }
+      
+      /* Hide interactive elements */
+      .no-print, #caRefreshBtn, #caTimestamp, button { display: none !important; }
+      
+      /* Page setup */
+      @page { 
+        size: A4; 
+        margin: 15mm 12mm; 
+      }
+      .card-title { break-after: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -873,13 +931,16 @@
         </div>
       </div>
 
-      <!-- Refresh button -->
-      <div style="text-align:center;margin-top:16px">
+      <!-- Action buttons -->
+      <div style="text-align:center;margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-secondary" onclick="loadCorteAnalytics(true)" id="caRefreshBtn">
           🔄 Actualizar análisis (usa créditos AI)
         </button>
-        <div style="font-size:11px;color:var(--text-3);margin-top:6px" id="caTimestamp">—</div>
+        <button class="btn btn-primary" onclick="printAnalytics()">
+          🖨️ Imprimir / Guardar PDF
+        </button>
       </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center" id="caTimestamp">—</div>
 
     </div><!-- end caContent -->
   </div><!-- end corte-panel-analytics -->
@@ -1809,6 +1870,59 @@ function renderListItems(selector, items, emoji) {
       <span>${emoji}</span><span>${escH(typeof item === "string" ? item : item.text || JSON.stringify(item))}</span>
     </li>`
   ).join("") || `<li style="padding:6px 0;color:var(--text-3)">Sin datos</li>`;
+}
+
+function printAnalytics() {
+  const content = qs("#caContent");
+  if (!content || content.style.display === "none") {
+    toast("Cargá el análisis primero", "error");
+    return;
+  }
+  
+  // Build date string
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("es-UY", { 
+    weekday: "long", year: "numeric", month: "long", day: "numeric" 
+  });
+  const timeStr = now.toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" });
+  
+  // Check if AI or deterministic
+  const isAI = caCache?.aiAnalysis?.analysis?.executive_summary;
+  const modeLabel = isAI ? "Análisis con IA (Claude Sonnet)" : "Análisis determinístico";
+  
+  // Create print wrapper with header + cloned content
+  let wrapper = document.getElementById("printWrapper");
+  if (wrapper) wrapper.remove();
+  
+  wrapper = document.createElement("div");
+  wrapper.id = "printWrapper";
+  wrapper.style.display = "none"; // hidden until print
+  
+  wrapper.innerHTML = `
+    <div class="print-header">
+      <h2>🤖 Corte Analytics — La Buonora</h2>
+      <div class="print-sub">${dateStr} — ${timeStr} · ${modeLabel} · Máquina: SCM Seccionadora (CORTE_1)</div>
+    </div>
+  `;
+  
+  // Clone the analytics content
+  const clone = content.cloneNode(true);
+  clone.style.display = "block";
+  
+  // Remove buttons from clone
+  clone.querySelectorAll("button, #caRefreshBtn, #caTimestamp").forEach(el => el.remove());
+  
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+  
+  // Print
+  window.print();
+  
+  // Cleanup after print
+  setTimeout(() => {
+    const pw = document.getElementById("printWrapper");
+    if (pw) pw.remove();
+  }, 1000);
 }
 
 // ══════════════════════════════════════════════
