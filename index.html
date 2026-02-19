@@ -186,6 +186,24 @@
       .cap-summary { grid-template-columns: 1fr; }
     }
 
+    /* ── Corte station ── */
+    .semaforo { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; margin: 0 auto 4px; transition: all .3s; }
+    .semaforo.VERDE { background: #22c55e; color: white; box-shadow: 0 0 16px rgba(34,197,94,.4); }
+    .semaforo.AMARILLO { background: #eab308; color: white; box-shadow: 0 0 16px rgba(234,179,8,.4); }
+    .semaforo.ROJO { background: #ef4444; color: white; box-shadow: 0 0 16px rgba(239,68,68,.4); animation: pulse-red 1.5s ease-in-out infinite; }
+    @keyframes pulse-red { 0%,100% { opacity:1; } 50% { opacity:.7; } }
+    .hourly-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; padding-bottom: 20px; position: relative; }
+    .hourly-col { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; min-width: 0; }
+    .hourly-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s; position: relative; z-index: 1; }
+    .hourly-bar.low { background: #ef4444; opacity: .8; }
+    .hourly-bar.mid { background: #eab308; opacity: .8; }
+    .hourly-bar.high { background: #22c55e; opacity: .8; }
+    .hourly-bar.future { background: var(--border); opacity: .3; }
+    .hourly-cnt { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-bottom: 2px; min-height: 14px; }
+    .hourly-lbl { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 4px; }
+    .baseline-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); z-index: 2; left: 50%; transform: translateX(-50%); }
+    .baseline-line { position: absolute; height: 1px; background: var(--accent); opacity: .5; z-index: 1; }
+
     /* ── Tracking project cards ── */
     .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
     .track-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; transition: border-color .15s; }
@@ -564,34 +582,156 @@
 </div><!-- /container -->
 
 <!-- ═══════════════════════════════════════════ -->
-<!-- ESTACIÓN: CORTE                            -->
+<!-- ESTACIÓN: CORTE — SCM Seccionadora          -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="tab-panel" id="panel-corte">
-  <div class="metrics-row">
-    <div class="metric-card"><div class="metric-label">Servicios en cola</div><div class="metric-value" id="cqTotal">—</div></div>
-    <div class="metric-card"><div class="metric-label">Tiempo corte total</div><div class="metric-value" id="cqTime">—</div><div class="metric-sub">estimado MobCloud</div></div>
-    <div class="metric-card"><div class="metric-label">Cortados (MobCloud)</div><div class="metric-value" id="cqDone">—</div></div>
-    <div class="metric-card"><div class="metric-label">Pendientes corte</div><div class="metric-value" id="cqPending">—</div></div>
+<div class="container">
+
+  <!-- Sub-tab navigation -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:6px;padding:3px;width:fit-content">
+    <button class="nav-tab active" onclick="switchCorteSub('hoy')" id="corte-hoy">Hoy en vivo</button>
+    <button class="nav-tab" onclick="switchCorteSub('servicios')" id="corte-servicios">Servicios</button>
+    <button class="nav-tab" onclick="switchCorteSub('tendencia')" id="corte-tendencia">Tendencia</button>
   </div>
-  <div class="card">
-    <div class="card-title">✂ Estación de Corte — Seccionadora SCM</div>
-    <p style="color:var(--text-3);font-size:13px;margin-bottom:16px">
-      Vista de corte por servicio. Los tiempos de corte provienen de la optimización de MobCloud (desplazamientos de seccionadora).
-      <br>Futuro: integración directa con seccionadora SCM para tracking en tiempo real.
-    </p>
-    <div class="table-wrap">
-      <table class="queue-table">
-        <thead><tr><th>#</th><th>Servicio</th><th>Cliente</th><th style="text-align:right">Tiempo corte</th><th style="text-align:center">Estado MobCloud</th><th style="text-align:center">Packing permitido</th></tr></thead>
-        <tbody id="corteBody"></tbody>
-      </table>
+
+  <!-- SUB: HOY EN VIVO -->
+  <div id="corte-panel-hoy">
+
+    <!-- KPIs + Semáforo -->
+    <div class="metrics-row" style="grid-template-columns:auto 1fr 1fr 1fr 1fr 1fr">
+      <div class="metric-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:100px">
+        <div class="semaforo" id="cSemaforo">—</div>
+        <div style="font-size:10px;color:var(--text-3);text-align:center" id="cSemaforoLabel">cargando...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Placas hoy</div>
+        <div class="metric-value" id="cPlacasHoy">—</div>
+        <div class="metric-sub" id="cPlacasHoySub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Eventos hoy</div>
+        <div class="metric-value" id="cEventosHoy">—</div>
+        <div class="metric-sub" id="cEventosHoySub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Min / placa</div>
+        <div class="metric-value" id="cMinPlaca">—</div>
+        <div class="metric-sub">tiempo promedio</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Último corte</div>
+        <div class="metric-value" id="cUltimoCorte">—</div>
+        <div class="metric-sub" id="cUltimoCorteSub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Minutos corte</div>
+        <div class="metric-value" id="cMinutosCorte">—</div>
+        <div class="metric-sub" id="cMinutosCorteSub"></div>
+      </div>
     </div>
-  </div>
-</div>
+
+    <!-- Barras por hora + baseline -->
+    <div class="card">
+      <div class="card-title">
+        Producción por hora — hoy
+        <span style="font-size:11px;color:var(--text-3);margin-left:8px">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);vertical-align:middle;margin-right:3px"></span>baseline 30d
+        </span>
+        <span style="font-size:11px;color:var(--text-3);margin-left:12px">
+          <span style="display:inline-block;width:8px;height:4px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:3px"></span>≥ baseline
+          <span style="display:inline-block;width:8px;height:4px;border-radius:2px;background:#eab308;vertical-align:middle;margin-left:6px;margin-right:3px"></span>50-99%
+          <span style="display:inline-block;width:8px;height:4px;border-radius:2px;background:#ef4444;vertical-align:middle;margin-left:6px;margin-right:3px"></span>&lt;50%
+        </span>
+        <div style="margin-left:auto">
+          <button class="btn btn-sm btn-secondary" onclick="loadCorte()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="hourly-chart" id="cHourlyChart">
+        <div class="empty" style="width:100%">Cargando datos de seccionadora...</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-top:8px">
+        <span id="cChartSummary"></span>
+        <span>Target: <strong id="cTarget">—</strong> placas/día</span>
+      </div>
+    </div>
+
+    <!-- Últimos cortes (tabla reciente) -->
+    <div class="card">
+      <div class="card-title">Últimos eventos de corte <span class="badge" id="cRecentCount">0</span></div>
+      <div class="table-wrap" style="max-height:300px;overflow-y:auto">
+        <table class="cycle-table">
+          <thead>
+            <tr>
+              <th>Programa</th>
+              <th style="text-align:right">Cantidad</th>
+              <th style="text-align:right">Medida (L×A×E)</th>
+              <th style="text-align:right">Área m²</th>
+              <th style="text-align:right">Tiempo</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+            </tr>
+          </thead>
+          <tbody id="cRecentBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end corte-panel-hoy -->
+
+  <!-- SUB: SERVICIOS PENDIENTES -->
+  <div id="corte-panel-servicios" style="display:none">
+
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Servicios en cola</div><div class="metric-value" id="cqTotal">—</div></div>
+      <div class="metric-card"><div class="metric-label">Tiempo corte total</div><div class="metric-value" id="cqTime">—</div><div class="metric-sub">estimado MobCloud</div></div>
+      <div class="metric-card"><div class="metric-label">Cortados (MobCloud)</div><div class="metric-value" id="cqDone">—</div></div>
+      <div class="metric-card"><div class="metric-label">Pendientes corte</div><div class="metric-value" id="cqPending">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Servicios pendientes de corte</div>
+      <p style="color:var(--text-3);font-size:12px;margin-bottom:12px">
+        Estado manual (MobCloud/Alan). Aún no vinculado automáticamente con los eventos de la seccionadora.
+      </p>
+      <div class="table-wrap">
+        <table class="queue-table">
+          <thead><tr><th>#</th><th>Servicio</th><th>Cliente</th><th style="text-align:right">Tiempo corte est.</th><th style="text-align:center">Estado</th></tr></thead>
+          <tbody id="corteBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end corte-panel-servicios -->
+
+  <!-- SUB: TENDENCIA 30 DÍAS -->
+  <div id="corte-panel-tendencia" style="display:none">
+
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Días registrados</div><div class="metric-value" id="ctDays">—</div></div>
+      <div class="metric-card"><div class="metric-label">Total placas</div><div class="metric-value" id="ctTotal">—</div></div>
+      <div class="metric-card"><div class="metric-label">Promedio/día</div><div class="metric-value" id="ctAvgDay">—</div></div>
+      <div class="metric-card"><div class="metric-label">Mejor día</div><div class="metric-value" id="ctBestDay">—</div><div class="metric-sub" id="ctBestDaySub"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Producción diaria — últimos 30 días</div>
+      <div class="day-bars" id="ctDailyBars" style="height:140px"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--text-3)">
+        <span>Placas cortadas por día</span>
+        <span id="ctDailySummary"></span>
+      </div>
+    </div>
+
+  </div><!-- end corte-panel-tendencia -->
+
+</div><!-- container -->
+</div><!-- end panel-corte -->
 
 <!-- ═══════════════════════════════════════════ -->
 <!-- ESTACIÓN: ENCHAPE                          -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="tab-panel" id="panel-enchape">
+<div class="container">
   <div class="metrics-row">
     <div class="metric-card"><div class="metric-label">Servicios en cola</div><div class="metric-value" id="eqTotal">—</div></div>
     <div class="metric-card"><div class="metric-label">Metros tapacanto</div><div class="metric-value" id="eqMeters">—</div><div class="metric-sub">estimados</div></div>
@@ -612,11 +752,13 @@
     </div>
   </div>
 </div>
+</div>
 
 <!-- ═══════════════════════════════════════════ -->
 <!-- CONTROL: RENDIMIENTO                       -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="tab-panel" id="panel-rendimiento">
+<div class="container">
   <div class="card">
     <div class="card-title">Rendimiento — Estimado vs Real por estación</div>
     <p style="color:var(--text-3);font-size:13px;margin-bottom:16px">
@@ -627,6 +769,7 @@
       <div class="empty">Cargando datos de rendimiento...</div>
     </div>
   </div>
+</div>
 </div>
 
 <!-- ═══════ MODALS ═══════ -->
@@ -700,6 +843,16 @@ async function sbQuery(table, params="") {
     headers: { "apikey":SUPABASE_ANON, "Authorization":`Bearer ${SUPABASE_ANON}`, "Accept":"application/json" }
   });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+async function sbRpc(fn, params={}) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "apikey":SUPABASE_ANON, "Authorization":`Bearer ${SUPABASE_ANON}`, "Accept":"application/json" },
+    body: JSON.stringify(params)
+  });
+  if (!r.ok) throw new Error(`RPC ${fn}: ${r.status} ${r.statusText}`);
   return r.json();
 }
 
@@ -789,9 +942,167 @@ function switchMecSub(sub) {
 }
 
 // ══════════════════════════════════════════════
-// ESTACIÓN: CORTE
+// ESTACIÓN: CORTE — SCM Seccionadora
 // ══════════════════════════════════════════════
+const CORTE_MACHINE = "CORTE_1";
+const JORNADA_HORAS = [7,8,9,10,11,12,13,14,15,16]; // 7:30–17:00
+
+let corteKpi = null;
+let corteHourly = [];
+let corteBaseline = [];
+let corteDaily = [];
+
+function switchCorteSub(sub) {
+  ["hoy","servicios","tendencia"].forEach(s => {
+    const p = qs(`#corte-panel-${s}`);
+    const t = qs(`#corte-${s}`);
+    if (p) p.style.display = s === sub ? "" : "none";
+    if (t) t.classList.toggle("active", s === sub);
+  });
+  if (sub === "servicios") loadCorteServicios();
+  if (sub === "tendencia") loadCorteTendencia();
+}
+
 async function loadCorte() {
+  try {
+    // Parallel: KPIs + hourly + baseline + recent events
+    const [kpiArr, hourly, baseline, recent] = await Promise.all([
+      sbRpc("fn_kpi_live", { p_machine_id: CORTE_MACHINE }),
+      sbRpc("fn_hourly_today", { p_machine_id: CORTE_MACHINE }),
+      sbRpc("fn_hourly_baseline", { p_machine_id: CORTE_MACHINE, p_days: 30 }).catch(() => []),
+      sbQuery("cortes_eventos", `machine_id=eq.${CORTE_MACHINE}&production_date=eq.${todayStr()}&order=data_inicio_local.desc&limit=30`).catch(() => []),
+    ]);
+
+    corteKpi = Array.isArray(kpiArr) ? kpiArr[0] : kpiArr;
+    corteHourly = hourly || [];
+    corteBaseline = baseline || [];
+
+    renderCorteKpis();
+    renderCorteHourly();
+    renderCorteRecent(recent);
+  } catch(e) {
+    console.error("loadCorte:", e);
+    toast("Corte: " + e.message, "error");
+  }
+}
+
+function renderCorteKpis() {
+  if (!corteKpi) {
+    qs("#cSemaforo").textContent = "?";
+    qs("#cSemaforo").className = "semaforo";
+    qs("#cSemaforoLabel").textContent = "sin datos";
+    return;
+  }
+  const k = corteKpi;
+
+  // Semáforo
+  const estado = k.estado || "ROJO";
+  qs("#cSemaforo").textContent = estado === "VERDE" ? "✓" : estado === "AMARILLO" ? "!" : "✕";
+  qs("#cSemaforo").className = `semaforo ${estado}`;
+  const minDesde = Math.max(0, k.min_desde_ultimo || 0);
+  qs("#cSemaforoLabel").textContent = minDesde <= 0 ? "activo ahora" : `hace ${Math.round(minDesde)} min`;
+
+  // KPIs
+  qs("#cPlacasHoy").textContent = k.placas_hoy || 0;
+  qs("#cPlacasHoySub").textContent = k.placas_ult_60 ? `${k.placas_ult_60} últ. 60 min` : "";
+  
+  qs("#cEventosHoy").textContent = k.eventos_hoy || 0;
+  qs("#cEventosHoySub").textContent = k.eventos_ult_60 ? `${k.eventos_ult_60} últ. 60 min` : "";
+  
+  qs("#cMinPlaca").textContent = k.min_por_placa ? `${Number(k.min_por_placa).toFixed(1)}′` : "—";
+  
+  // Último corte
+  if (k.ultimo_corte_local) {
+    const t = new Date(k.ultimo_corte_local);
+    qs("#cUltimoCorte").textContent = t.toLocaleTimeString("es-UY", {hour:"2-digit",minute:"2-digit",hour12:false});
+  } else {
+    qs("#cUltimoCorte").textContent = "—";
+  }
+  qs("#cUltimoCorteSub").textContent = minDesde > 0 ? `hace ${Math.round(minDesde)} min` : "ahora";
+
+  // Minutos corte
+  qs("#cMinutosCorte").textContent = k.minutos_corte_hoy ? `${Math.round(k.minutos_corte_hoy)}′` : "—";
+  const arranqueMin = k.demora_arranque_min;
+  qs("#cMinutosCorteSub").textContent = arranqueMin != null ? `arranque: ${arranqueMin > 0 ? "+" + Math.round(arranqueMin) + " min" : "a tiempo"}` : "";
+  
+  qs("#cTarget").textContent = k.target_plates || "—";
+}
+
+function renderCorteHourly() {
+  const chart = qs("#cHourlyChart");
+  
+  // Build hourly map
+  const hourMap = {};
+  for (const h of corteHourly) {
+    const hora = h.hora_local != null ? h.hora_local : null;
+    if (hora != null) hourMap[hora] = h.placas || 0;
+  }
+  
+  // Build baseline map
+  const blMap = {};
+  for (const b of corteBaseline) {
+    const hora = b.hora_local != null ? b.hora_local : (b.hora_label != null ? parseInt(b.hora_label) : null);
+    if (hora != null) blMap[hora] = Number(b.avg_placas || 0);
+  }
+  
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // Find max for scaling
+  const allVals = JORNADA_HORAS.map(h => Math.max(hourMap[h]||0, blMap[h]||0));
+  const maxVal = Math.max(...allVals, 1);
+  
+  let totalHoy = 0;
+  
+  chart.innerHTML = JORNADA_HORAS.map(h => {
+    const placas = hourMap[h] || 0;
+    const bl = blMap[h] || 0;
+    totalHoy += placas;
+    const barH = Math.max(2, (placas / maxVal) * 120);
+    const blH = bl > 0 ? Math.max(2, (bl / maxVal) * 120) : 0;
+    
+    // Color based on baseline comparison
+    let barClass = "future";
+    if (h < currentHour || (h === currentHour && placas > 0)) {
+      if (bl <= 0 || placas >= bl) barClass = "high";
+      else if (placas >= bl * 0.5) barClass = "mid";
+      else barClass = "low";
+    } else if (h === currentHour) {
+      barClass = placas > 0 ? "mid" : "future";
+    }
+    
+    return `
+      <div class="hourly-col" title="${h}:00 — ${placas} placas (baseline: ${bl.toFixed(1)})">
+        <div class="hourly-cnt">${placas || ""}</div>
+        <div style="position:relative;width:100%;flex:1;display:flex;align-items:flex-end">
+          <div class="hourly-bar ${barClass}" style="height:${barH}px"></div>
+          ${blH > 0 ? `<div class="baseline-dot" style="bottom:${blH}px" title="Baseline: ${bl.toFixed(1)}"></div>` : ""}
+        </div>
+        <div class="hourly-lbl">${String(h).padStart(2,"0")}</div>
+      </div>`;
+  }).join("");
+  
+  qs("#cChartSummary").textContent = `Hoy: ${totalHoy} placas`;
+}
+
+function renderCorteRecent(events) {
+  qs("#cRecentCount").textContent = events.length;
+  qs("#cRecentBody").innerHTML = events.map(e => {
+    const medida = [e.comprimento, e.largura, e.espessura].filter(v=>v).join(" × ");
+    return `<tr>
+      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(e.programa||"")}">${escH(e.programa||"—")}</td>
+      <td style="text-align:right;font-family:var(--mono)">${e.quantidade||1}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-2)">${medida || "—"}</td>
+      <td style="text-align:right;font-family:var(--mono)">${e.area_m2 ? Number(e.area_m2).toFixed(2) : "—"}</td>
+      <td style="text-align:right;font-family:var(--mono)">${e.tempo_corte_s ? fmtSec(e.tempo_corte_s) : "—"}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${e.data_inicio_local ? fmtTime(e.data_inicio_local) : "—"}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${e.data_termino_local ? fmtTime(e.data_termino_local) : "—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Servicios pendientes de corte (sub-tab)
+async function loadCorteServicios() {
   try {
     const data = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
     const items = data.filter(i => i.status !== "completed");
@@ -815,10 +1126,50 @@ async function loadCorte() {
         <td class="svc-client">${escH(item.client_name||"")}</td>
         <td style="text-align:right;font-family:var(--mono)">${cutMin > 0 ? fmtMinFromMin(cutMin) : "—"}</td>
         <td style="text-align:center"><div class="dot-mob ${st}" style="margin:0 auto">${dotIcon}</div></td>
-        <td style="text-align:center;font-size:12px">${item.packing_allowed ? "✓" : "—"}</td>
       </tr>`;
     }).join("");
   } catch(e) { toast(e.message,"error"); }
+}
+
+// Tendencia 30 días (sub-tab)
+async function loadCorteTendencia() {
+  try {
+    corteDaily = await sbRpc("fn_daily_last", { p_machine_id: CORTE_MACHINE, p_days: 30 });
+    if (!corteDaily || !corteDaily.length) {
+      qs("#ctDailyBars").innerHTML = '<div class="empty">Sin datos de los últimos 30 días</div>';
+      return;
+    }
+    
+    const sorted = [...corteDaily].sort((a,b) => (a.dia||"").localeCompare(b.dia||""));
+    const totalPlacas = sorted.reduce((s,d) => s + (d.placas||0), 0);
+    const avgDay = Math.round(totalPlacas / sorted.length);
+    const best = sorted.reduce((a,b) => (b.placas||0) > (a.placas||0) ? b : a, sorted[0]);
+    
+    qs("#ctDays").textContent = sorted.length;
+    qs("#ctTotal").textContent = totalPlacas.toLocaleString();
+    qs("#ctAvgDay").textContent = avgDay;
+    qs("#ctBestDay").textContent = best.placas || 0;
+    qs("#ctBestDaySub").textContent = best.dia || "";
+    
+    const maxP = Math.max(...sorted.map(d => d.placas||0), 1);
+    qs("#ctDailyBars").innerHTML = sorted.map(d => {
+      const h = ((d.placas||0) / maxP) * 120;
+      const date = new Date(d.dia + "T12:00:00");
+      const isToday = d.dia === todayStr();
+      return `
+        <div class="day-col" title="${d.dia}: ${d.placas} placas">
+          <div class="day-cnt">${d.placas}</div>
+          <div class="day-bar${isToday?" today":""}" style="height:${h}px"></div>
+          <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${DAY_NAMES[date.getDay()]}</div>
+          <div class="day-lbl" style="${isToday?"color:var(--success);font-weight:700":""}">${date.getDate()}</div>
+        </div>`;
+    }).join("");
+    
+    qs("#ctDailySummary").textContent = `Total: ${totalPlacas} placas — Prom: ${avgDay}/día`;
+  } catch(e) {
+    console.error("loadCorteTendencia:", e);
+    toast("Tendencia corte: " + e.message, "error");
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1192,6 +1543,7 @@ function renderTrackParts() {
 // ══════════════════════════════════════════════
 let queueData = [];
 let packingProgress = {};  // service_id → {total, scanned, complete}
+let corteActivityToday = false;  // true if seccionadora active today
 
 async function loadQueue() {
   try {
@@ -1207,10 +1559,11 @@ async function loadQueue() {
       console.warn("sync-queue failed (offline?):", e.message);
     }
     
-    // Load queue + packing progress in parallel
-    const [qData, ppData] = await Promise.all([
+    // Load queue + packing progress + corte KPI in parallel
+    const [qData, ppData, corteKpiArr] = await Promise.all([
       sbQuery("production_queue_status", "order=priority.asc,created_at.asc"),
       sbQuery("vw_packing_service_progress", "").catch(() => []),
+      sbRpc("fn_kpi_live", { p_machine_id: "CORTE_1" }).catch(() => []),
     ]);
     queueData = qData;
     
@@ -1222,6 +1575,10 @@ async function loadQueue() {
         complete: (p.pct_complete || 0) >= 100,
       };
     }
+    
+    // Corte activity: if seccionadora has cut today
+    const ck = Array.isArray(corteKpiArr) ? corteKpiArr[0] : corteKpiArr;
+    corteActivityToday = ck && (ck.placas_hoy || 0) > 0;
     
     renderQueue();
   } catch(e) { toast(e.message,"error"); }
@@ -1268,8 +1625,11 @@ function renderQueue() {
     const stPacking = st.packing || "pending";
     
     // Auto-detected stations (from real machine data)
-    // Corte: no machine integration yet → no_data
-    const autoCorte = "no_data";
+    // Corte: general signal — seccionadora active today (no per-service link yet)
+    const mobCorte = (st.corte||"pending");
+    const autoCorte = corteActivityToday 
+      ? (mobCorte === "completed" ? "completed" : "in_progress")  
+      : "no_data";
     // Enchape: no machine integration yet → no_data
     const autoEnchape = "no_data";
     // Mecanizado: from CNC cycles (real data!)
@@ -1280,16 +1640,6 @@ function renderQueue() {
     
     const dotIcon = s => s === "completed" ? "✓" : s === "in_progress" ? "▶" : s === "no_data" ? "" : "·";
 
-    // Dual cell helper: MobCloud circle + Auto square
-    const dualCell = (mob, auto, info) => `
-      <td class="station-cell">
-        <div class="dual-dots">
-          <div class="dot-mob ${mob}" onclick="cycleStation('${item.id}','${mob === stCorte ? 'corte' : mob === stEnchape ? 'enchape' : mob === stMecanizado ? 'mecanizado' : 'packing'}',this)" title="MobCloud (manual)">${dotIcon(mob)}</div>
-          <div class="dot-auto ${auto}" title="Auto-detectado">${dotIcon(auto)}</div>
-        </div>
-        ${info ? `<div class="station-info">${info}</div>` : ""}
-      </td>`;
-    
     return `<tr data-id="${item.id}">
       <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">${idx+1}</td>
       <td>
@@ -1301,7 +1651,7 @@ function renderQueue() {
       <td class="station-cell">
         <div class="dual-dots">
           <div class="dot-mob ${stCorte}" onclick="cycleStation('${item.id}','corte',this)" title="MobCloud (manual)">${dotIcon(stCorte)}</div>
-          <div class="dot-auto ${autoCorte}" title="Auto-detectado">${dotIcon(autoCorte)}</div>
+          <div class="dot-auto ${autoCorte}" title="Auto: seccionadora ${corteActivityToday ? 'activa hoy' : 'sin datos'}">${dotIcon(autoCorte)}</div>
         </div>
         ${cutEst ? `<div class="station-info">${cutEst}</div>` : ""}
       </td>
