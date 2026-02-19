@@ -888,6 +888,16 @@ let queueData = [];
 
 async function loadQueue() {
   try {
+    // Auto-sync production queue from MobCloud
+    try {
+      const syncResult = await invokeFunction("production-service", { action: "sync-queue" });
+      if (syncResult.synced > 0) {
+        toast(`${syncResult.synced} servicios nuevos importados de MobCloud`, "success");
+      }
+    } catch (e) {
+      console.warn("sync-queue failed (offline?):", e.message);
+    }
+    
     queueData = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
     renderQueue();
   } catch(e) { toast(e.message,"error"); }
