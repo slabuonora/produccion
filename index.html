@@ -3035,7 +3035,8 @@ async function loadCortePiezas() {
     }
 
     if (lastPieza) {
-      const t = new Date(lastPieza.printed_at);
+      const raw = (lastPieza.printed_at || "").replace("+00","").replace("Z","");
+      const t = new Date(raw);
       qs("#cpUltimaPieza").textContent = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
       qs("#cpUltimaPiezaSub").textContent = lastPieza.part_name || `#${lastPieza.part_id}`;
     } else {
@@ -3104,20 +3105,26 @@ function renderPiezasCards() {
 
     return `
       <div class="pieza-card ${statusClass}">
-        <div class="pc-pct" style="color:${barColor}">${Math.round(pct)}%</div>
         <div class="pc-header">
           ${isActive ? '<div class="pc-pulse"></div>' : ''}
           <span class="pc-badge ${badgeClass}">${badgeText}</span>
         </div>
-        <div class="pc-name" title="${s.service_name}">${s.service_name}</div>
-        <div class="pc-client">${s.client_name || "Sin cliente"}</div>
-        <div class="pc-stats">
-          <div><div class="pc-stat-label">Cortadas</div><div class="pc-stat-value">${s.pieces_cut}/${s.total_unique_parts}</div></div>
-          <div><div class="pc-stat-label">CNC</div><div class="pc-stat-value">${s.parts_needing_cnc}</div></div>
-          <div><div class="pc-stat-label">Total pzas</div><div class="pc-stat-value">${s.total_pieces_expected}</div></div>
-          ${timeHtml}
+        <div style="display:flex;align-items:center;gap:16px;margin:8px 0">
+          <div style="text-align:center;min-width:70px">
+            <div style="font-size:32px;font-weight:800;font-family:'SF Mono','Fira Code',monospace;color:${barColor};line-height:1">${Math.round(pct)}<span style="font-size:16px">%</span></div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px">${s.pieces_cut}/${s.total_unique_parts}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="pc-name" title="${s.service_name}">${s.service_name}</div>
+            <div class="pc-client">${s.client_name || "Sin cliente"}</div>
+          </div>
         </div>
         <div class="pc-bar"><div class="pc-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        <div class="pc-stats" style="margin-top:10px">
+          <div><div class="pc-stat-label">Total pzas</div><div class="pc-stat-value">${s.total_pieces_expected}</div></div>
+          <div><div class="pc-stat-label">CNC</div><div class="pc-stat-value">${s.parts_needing_cnc}</div></div>
+          ${timeHtml}
+        </div>
       </div>`;
   };
 
@@ -3148,7 +3155,9 @@ function renderPiezasFeed() {
   }
 
   body.innerHTML = cpFeedData.map(item => {
-    const t = new Date(item.printed_at);
+    // Agent stores local time as UTC — extract time string directly
+    const raw = (item.printed_at || "").replace("+00","").replace("Z","");
+    const t = new Date(raw);
     const timeStr = t.toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
     const dims = item.part_c && item.part_l ? `${item.part_c}×${item.part_l}` : "—";
     return `<tr>
@@ -3160,6 +3169,7 @@ function renderPiezasFeed() {
       <td style="text-align:right;font-family:monospace;font-size:11px;color:var(--text-3)">#${item.part_id}</td>
     </tr>`;
   }).join("");
+}
 }
 
 // ══════════════════════════════════════════════
