@@ -936,8 +936,11 @@
         <button class="btn btn-secondary" onclick="loadCorteAnalytics(true)" id="caRefreshBtn">
           🔄 Actualizar análisis (usa créditos AI)
         </button>
-        <button class="btn btn-primary" onclick="printAnalytics()">
-          🖨️ Imprimir / Guardar PDF
+        <button class="btn btn-primary" onclick="generateAnalyticsPDF()">
+          📄 Generar Reporte PDF
+        </button>
+        <button class="btn btn-secondary" onclick="printAnalytics()">
+          🖨️ Imprimir
         </button>
       </div>
       <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center" id="caTimestamp">—</div>
@@ -1870,6 +1873,42 @@ function renderListItems(selector, items, emoji) {
       <span>${emoji}</span><span>${escH(typeof item === "string" ? item : item.text || JSON.stringify(item))}</span>
     </li>`
   ).join("") || `<li style="padding:6px 0;color:var(--text-3)">Sin datos</li>`;
+}
+
+async function generateAnalyticsPDF() {
+  if (!caCache) {
+    toast("Cargá el análisis primero", "error");
+    return;
+  }
+  
+  const btn = qs("#caRefreshBtn");
+  showLoading("Generando reporte PDF con Data Storytelling...");
+  
+  try {
+    const payload = {
+      type: "corte-analytics",
+      data: {
+        kpis: caCache.kpis || {},
+        analysis: caCache.aiAnalysis?.analysis || {},
+        alerts_summary: caCache.aiAnalysis?.alerts_summary || {},
+        discipline: caCache.discipline || {},
+      }
+    };
+    
+    const result = await invokeFunction("report-pdf-engine", payload);
+    
+    if (result.signed_url) {
+      window.open(result.signed_url, "_blank");
+      toast(`Reporte PDF generado (${result.pages} páginas)`, "success");
+    } else {
+      throw new Error("No se recibió URL del PDF");
+    }
+  } catch(e) {
+    console.error("[PDF Engine]", e);
+    toast("Error generando PDF: " + e.message, "error");
+  } finally {
+    hideLoading();
+  }
 }
 
 function printAnalytics() {
