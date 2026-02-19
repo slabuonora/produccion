@@ -1013,7 +1013,10 @@
           🔄 Actualizar análisis (usa créditos AI)
         </button>
         <button class="btn btn-primary" onclick="generateAnalyticsPDF()">
-          📄 Generar Reporte PDF
+          📄 Reporte PDF
+        </button>
+        <button class="btn btn-primary" onclick="generateBothPDFs()" style="background:var(--success)">
+          📄✉️ Reporte + Narrativa
         </button>
         <button class="btn btn-secondary" onclick="printAnalytics()">
           🖨️ Imprimir
@@ -2326,21 +2329,10 @@ async function generateAnalyticsPDF() {
     return;
   }
   
-  const btn = qs("#caRefreshBtn");
   showLoading("Generando reporte PDF con Data Storytelling...");
   
   try {
-    const payload = {
-      type: "corte-analytics",
-      data: {
-        kpis: caCache.kpis || {},
-        analysis: caCache.aiAnalysis?.analysis || {},
-        alerts_summary: caCache.aiAnalysis?.alerts_summary || {},
-        discipline: caCache.discipline || {},
-      }
-    };
-    
-    const result = await invokeFunction("report-pdf-engine", payload);
+    const result = await invokeFunction("report-pdf-engine", buildPdfPayload("corte-analytics"));
     
     if (result.signed_url) {
       window.open(result.signed_url, "_blank");
@@ -2354,6 +2346,46 @@ async function generateAnalyticsPDF() {
   } finally {
     hideLoading();
   }
+}
+
+async function generateBothPDFs() {
+  if (!caCache) {
+    toast("Cargá el análisis primero", "error");
+    return;
+  }
+  
+  showLoading("Generando Reporte + Narrativa Ejecutiva...");
+  
+  try {
+    // Generate both in parallel
+    const [report, narrative] = await Promise.all([
+      invokeFunction("report-pdf-engine", buildPdfPayload("corte-analytics")),
+      invokeFunction("report-pdf-engine", buildPdfPayload("corte-analytics-narrative")),
+    ]);
+    
+    // Open both
+    if (narrative.signed_url) window.open(narrative.signed_url, "_blank");
+    if (report.signed_url) window.open(report.signed_url, "_blank");
+    
+    toast(`Reporte (${report.pages} pág) + Narrativa ejecutiva generados`, "success");
+  } catch(e) {
+    console.error("[PDF Engine]", e);
+    toast("Error: " + e.message, "error");
+  } finally {
+    hideLoading();
+  }
+}
+
+function buildPdfPayload(type) {
+  return {
+    type,
+    data: {
+      kpis: caCache.kpis || {},
+      analysis: caCache.aiAnalysis?.analysis || {},
+      alerts_summary: caCache.aiAnalysis?.alerts_summary || {},
+      discipline: caCache.discipline || {},
+    }
+  };
 }
 
 function printAnalytics() {
