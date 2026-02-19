@@ -27,10 +27,35 @@
     .app-header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
     .app-header .subtitle { color: var(--text-3); font-size: 13px; }
     .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-    .nav-tabs { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 3px; margin-left: 12px; }
+    .nav-tabs { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 3px; margin-left: 12px; align-items: center; }
     .nav-tab { padding: 6px 14px; font-size: 12.5px; font-weight: 500; font-family: inherit; border: none; background: transparent; color: var(--text-3); cursor: pointer; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
     .nav-tab:hover { color: var(--text); background: var(--surface); }
     .nav-tab.active { background: var(--accent); color: white; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .nav-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .nav-group { position: relative; }
+    .nav-group:hover .nav-dropdown, .nav-group:focus-within .nav-dropdown { display: block; }
+    .nav-dropdown {
+      display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 4px; min-width: 180px; z-index: 40; box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    }
+    .nav-dropdown .nav-tab { display: block; width: 100%; text-align: left; border-radius: 4px; padding: 7px 12px; font-size: 12px; }
+    .nav-dropdown .nav-tab.active { background: var(--accent); }
+    .nav-dropdown .dd-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); padding: 6px 12px 3px; }
+
+    /* ── Dual indicator dots ── */
+    .dual-dots { display: flex; gap: 3px; justify-content: center; align-items: center; }
+    .dot-mob { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; transition: all .2s; border: 2px solid var(--border); color: var(--text-3); }
+    .dot-mob:hover { transform: scale(1.15); }
+    .dot-mob.pending { border-color: var(--border); background: var(--bg); color: var(--text-3); }
+    .dot-mob.in_progress { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+    .dot-mob.completed { border-color: var(--success); background: #e3f5ea; color: var(--success); }
+    .dot-auto { width: 20px; height: 20px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; border: 1.5px dashed var(--border); color: var(--text-3); transition: all .2s; }
+    .dot-auto.pending { border-color: var(--border); background: transparent; color: var(--text-3); }
+    .dot-auto.in_progress { border-color: var(--accent); background: var(--accent-light); color: var(--accent); border-style: solid; }
+    .dot-auto.completed { border-color: var(--success); background: #e3f5ea; color: var(--success); border-style: solid; }
+    .dot-auto.no_data { border-color: transparent; background: transparent; color: transparent; }
+    .dual-label { font-size: 8px; color: var(--text-3); text-align: center; margin-top: 1px; letter-spacing: .03em; }
     
     /* ── Shared UI ── */
     .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
@@ -181,14 +206,29 @@
 
 <div class="app-header">
   <h1>Producción</h1>
-  <span class="subtitle">CNC CX100</span>
+  <span class="subtitle">La Buonora</span>
   <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('tracking')" id="tab-tracking">Tracking</button>
-    <button class="nav-tab" onclick="switchTab('cola')" id="tab-cola">Cola</button>
-    <button class="nav-tab" onclick="switchTab('dia')" id="tab-dia">Día</button>
-    <button class="nav-tab" onclick="switchTab('historico')" id="tab-historico">Histórico</button>
-    <button class="nav-tab" onclick="switchTab('capacidad')" id="tab-capacidad">Capacidad</button>
-    <button class="nav-tab" onclick="switchTab('prepacking')" id="tab-prepacking">Pre Packing</button>
+    <button class="nav-tab active" onclick="switchTab('cola')" id="tab-cola">Cola</button>
+    <div class="nav-sep"></div>
+    <div class="nav-group">
+      <button class="nav-tab" id="tab-estaciones">Estaciones ▾</button>
+      <div class="nav-dropdown">
+        <div class="dd-label">Estaciones</div>
+        <button class="nav-tab" onclick="switchTab('corte')" id="tab-corte">✂ Corte</button>
+        <button class="nav-tab" onclick="switchTab('enchape')" id="tab-enchape">▤ Enchape</button>
+        <button class="nav-tab" onclick="switchTab('mecanizado')" id="tab-mecanizado">⚙ Mecanizado</button>
+        <button class="nav-tab" onclick="switchTab('packing')" id="tab-packing">📦 Packing</button>
+      </div>
+    </div>
+    <div class="nav-group">
+      <button class="nav-tab" id="tab-control">Control ▾</button>
+      <div class="nav-dropdown">
+        <div class="dd-label">Control</div>
+        <button class="nav-tab" onclick="switchTab('capacidad')" id="tab-capacidad">Capacidad</button>
+        <button class="nav-tab" onclick="switchTab('historico')" id="tab-historico">Histórico</button>
+        <button class="nav-tab" onclick="switchTab('rendimiento')" id="tab-rendimiento">Rendimiento</button>
+      </div>
+    </div>
   </nav>
   <div class="header-actions">
     <a href="https://comercial-4xh.pages.dev/" class="btn btn-secondary btn-sm" style="text-decoration:none">← Comercial</a>
@@ -199,10 +239,18 @@
 <div class="container">
 
 <!-- ═══════════════════════════════════════════ -->
-<!-- TAB 0: TRACKING POR PROYECTO              -->
+<!-- ESTACIÓN: MECANIZADO (CNC CX100)          -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="tab-panel active" id="panel-tracking">
+<div class="tab-panel" id="panel-mecanizado">
 
+  <!-- Sub-tab navigation -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:6px;padding:3px;width:fit-content">
+    <button class="nav-tab active" onclick="switchMecSub('tracking')" id="mec-tracking">Tracking</button>
+    <button class="nav-tab" onclick="switchMecSub('dia')" id="mec-dia">Día CNC</button>
+  </div>
+
+  <!-- SUB: Tracking -->
+  <div id="mec-panel-tracking">
   <div class="metrics-row" id="trackMetrics">
     <div class="metric-card"><div class="metric-label">Proyectos activos</div><div class="metric-value" id="tProjects">—</div></div>
     <div class="metric-card"><div class="metric-label">Piezas mecanizadas</div><div class="metric-value" id="tPieces">—</div><div class="metric-sub" id="tPiecesSub"></div></div>
@@ -256,73 +304,10 @@
       </table>
     </div>
   </div>
-</div>
+  </div><!-- end mec-panel-tracking -->
 
-<!-- ═══════════════════════════════════════════ -->
-<!-- TAB 1: COLA DE PRODUCCIÓN                  -->
-<!-- ═══════════════════════════════════════════ -->
-<div class="tab-panel" id="panel-cola">
-
-  <div class="metrics-row" id="queueMetrics">
-    <div class="metric-card"><div class="metric-label">Pendientes</div><div class="metric-value" id="mPending">—</div></div>
-    <div class="metric-card"><div class="metric-label">En proceso</div><div class="metric-value" id="mInProgress">—</div></div>
-    <div class="metric-card"><div class="metric-label">Piezas CNC pendientes</div><div class="metric-value" id="mPiecesPending">—</div><div class="metric-sub" id="mPiecesPendingSub"></div></div>
-    <div class="metric-card"><div class="metric-label">Tiempo CNC estimado</div><div class="metric-value" id="mTimePending">—</div><div class="metric-sub" id="mTimePendingSub"></div></div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">
-      Cola de producción
-      <span class="badge" id="queueCount">0</span>
-      <div style="margin-left:auto; display:flex; gap:8px;">
-        <button class="btn btn-sm btn-secondary" onclick="recalcAll()">↻ Recalcular CNC</button>
-        <button class="btn btn-sm btn-primary" onclick="showAddModal()">+ Agregar servicio</button>
-        <button class="btn btn-sm btn-success" onclick="showAddFromQuoteModal()">+ Desde cotización</button>
-      </div>
-    </div>
-    
-    <div class="filter-bar">
-      <div class="form-group" style="flex:0 0 160px">
-        <label>Estado</label>
-        <select id="queueFilter" onchange="renderQueue()">
-          <option value="">Todos</option>
-          <option value="pending" selected>Pendientes</option>
-          <option value="in_progress">En proceso</option>
-          <option value="completed">Completados</option>
-          <option value="on_hold">En espera</option>
-        </select>
-      </div>
-      <div class="form-group" style="flex:0 0 160px">
-        <label>Buscar</label>
-        <input type="text" id="queueSearch" placeholder="Nombre, cliente..." oninput="renderQueue()">
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <table class="queue-table">
-        <thead>
-          <tr>
-            <th style="width:30px">#</th>
-            <th>Servicio</th>
-            <th style="text-align:center">✂ Corte</th>
-            <th style="text-align:center">▤ Enchape</th>
-            <th style="text-align:center">⚙ Mecanizado</th>
-            <th style="text-align:center">☐ Pre Packing</th>
-            <th style="text-align:center">📦 Packing</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="queueBody"></tbody>
-      </table>
-    </div>
-    <div class="empty" id="queueEmpty" style="display:none">No hay servicios en la cola</div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════ -->
-<!-- TAB 2: PANEL DEL DÍA                      -->
-<!-- ═══════════════════════════════════════════ -->
-<div class="tab-panel" id="panel-dia">
+  <!-- SUB: Día CNC -->
+  <div id="mec-panel-dia" style="display:none">
   <div class="filter-bar" style="margin-bottom:16px">
     <div class="form-group" style="flex:0 0 180px">
       <label>Fecha</label>
@@ -384,7 +369,71 @@
       </table>
     </div>
   </div>
+  </div><!-- end mec-panel-dia -->
+
+</div><!-- end panel-mecanizado -->
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAB 1: COLA DE PRODUCCIÓN                  -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel active" id="panel-cola">
+
+  <div class="metrics-row" id="queueMetrics">
+    <div class="metric-card"><div class="metric-label">Pendientes</div><div class="metric-value" id="mPending">—</div></div>
+    <div class="metric-card"><div class="metric-label">En proceso</div><div class="metric-value" id="mInProgress">—</div></div>
+    <div class="metric-card"><div class="metric-label">Piezas CNC pendientes</div><div class="metric-value" id="mPiecesPending">—</div><div class="metric-sub" id="mPiecesPendingSub"></div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo CNC estimado</div><div class="metric-value" id="mTimePending">—</div><div class="metric-sub" id="mTimePendingSub"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      Cola de producción
+      <span class="badge" id="queueCount">0</span>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn btn-sm btn-secondary" onclick="recalcAll()">↻ Recalcular CNC</button>
+        <button class="btn btn-sm btn-primary" onclick="showAddModal()">+ Agregar servicio</button>
+        <button class="btn btn-sm btn-success" onclick="showAddFromQuoteModal()">+ Desde cotización</button>
+      </div>
+    </div>
+    
+    <div class="filter-bar">
+      <div class="form-group" style="flex:0 0 160px">
+        <label>Estado</label>
+        <select id="queueFilter" onchange="renderQueue()">
+          <option value="">Todos</option>
+          <option value="pending" selected>Pendientes</option>
+          <option value="in_progress">En proceso</option>
+          <option value="completed">Completados</option>
+          <option value="on_hold">En espera</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 160px">
+        <label>Buscar</label>
+        <input type="text" id="queueSearch" placeholder="Nombre, cliente..." oninput="renderQueue()">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th>Servicio</th>
+            <th style="text-align:center;min-width:60px"><div>✂ Corte</div><div style="display:flex;gap:2px;justify-content:center;font-size:8px;color:var(--text-3);margin-top:2px"><span style="width:20px;text-align:center">M</span><span style="width:20px;text-align:center">A</span></div></th>
+            <th style="text-align:center;min-width:60px"><div>▤ Enchape</div><div style="display:flex;gap:2px;justify-content:center;font-size:8px;color:var(--text-3);margin-top:2px"><span style="width:20px;text-align:center">M</span><span style="width:20px;text-align:center">A</span></div></th>
+            <th style="text-align:center;min-width:60px"><div>⚙ CNC</div><div style="display:flex;gap:2px;justify-content:center;font-size:8px;color:var(--text-3);margin-top:2px"><span style="width:20px;text-align:center">M</span><span style="width:20px;text-align:center">A</span></div></th>
+            <th style="text-align:center;min-width:60px"><div>📦 Packing</div><div style="display:flex;gap:2px;justify-content:center;font-size:8px;color:var(--text-3);margin-top:2px"><span style="width:20px;text-align:center">M</span><span style="width:20px;text-align:center">A</span></div></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="queueBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="queueEmpty" style="display:none">No hay servicios en la cola</div>
+  </div>
 </div>
+
+<!-- (Día content merged into panel-mecanizado) -->
 
 <!-- ═══════════════════════════════════════════ -->
 <!-- TAB 3: HISTÓRICO                           -->
@@ -462,9 +511,10 @@
 </div>
 
 <!-- ═══════════════════════════════════════════ -->
-<!-- TAB 5: PRE PACKING                         -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="tab-panel" id="panel-prepacking">
+<!-- ESTACIÓN: PACKING                          -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-packing">
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div>
@@ -509,6 +559,72 @@
 </div>
 
 </div><!-- /container -->
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ESTACIÓN: CORTE                            -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-corte">
+  <div class="metrics-row">
+    <div class="metric-card"><div class="metric-label">Servicios en cola</div><div class="metric-value" id="cqTotal">—</div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo corte total</div><div class="metric-value" id="cqTime">—</div><div class="metric-sub">estimado MobCloud</div></div>
+    <div class="metric-card"><div class="metric-label">Cortados (MobCloud)</div><div class="metric-value" id="cqDone">—</div></div>
+    <div class="metric-card"><div class="metric-label">Pendientes corte</div><div class="metric-value" id="cqPending">—</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">✂ Estación de Corte — Seccionadora SCM</div>
+    <p style="color:var(--text-3);font-size:13px;margin-bottom:16px">
+      Vista de corte por servicio. Los tiempos de corte provienen de la optimización de MobCloud (desplazamientos de seccionadora).
+      <br>Futuro: integración directa con seccionadora SCM para tracking en tiempo real.
+    </p>
+    <div class="table-wrap">
+      <table class="queue-table">
+        <thead><tr><th>#</th><th>Servicio</th><th>Cliente</th><th style="text-align:right">Tiempo corte</th><th style="text-align:center">Estado MobCloud</th><th style="text-align:center">Packing permitido</th></tr></thead>
+        <tbody id="corteBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ESTACIÓN: ENCHAPE                          -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-enchape">
+  <div class="metrics-row">
+    <div class="metric-card"><div class="metric-label">Servicios en cola</div><div class="metric-value" id="eqTotal">—</div></div>
+    <div class="metric-card"><div class="metric-label">Metros tapacanto</div><div class="metric-value" id="eqMeters">—</div><div class="metric-sub">estimados</div></div>
+    <div class="metric-card"><div class="metric-label">Tiempo enchape</div><div class="metric-value" id="eqTime">—</div><div class="metric-sub">a 7 m/min</div></div>
+    <div class="metric-card"><div class="metric-label">Enchapados (MobCloud)</div><div class="metric-value" id="eqDone">—</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">▤ Estación de Enchape — Enchapadora</div>
+    <p style="color:var(--text-3);font-size:13px;margin-bottom:16px">
+      Vista de enchape por servicio. Los metros de tapacanto se estiman de los lados con borde de cada pieza.
+      <br>Futuro: integración directa con enchapadora para tracking en tiempo real.
+    </p>
+    <div class="table-wrap">
+      <table class="queue-table">
+        <thead><tr><th>#</th><th>Servicio</th><th>Cliente</th><th style="text-align:right">Lados</th><th style="text-align:right">Metros est.</th><th style="text-align:right">Tiempo est.</th><th style="text-align:center">Estado MobCloud</th></tr></thead>
+        <tbody id="enchapeBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- CONTROL: RENDIMIENTO                       -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-rendimiento">
+  <div class="card">
+    <div class="card-title">Rendimiento — Estimado vs Real por estación</div>
+    <p style="color:var(--text-3);font-size:13px;margin-bottom:16px">
+      Comparación de tiempos estimados vs reales para cada estación de producción.
+      <br>Actualmente solo disponible para Mecanizado CNC (datos reales de ciclos).
+    </p>
+    <div id="rendimientoContent">
+      <div class="empty">Cargando datos de rendimiento...</div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════ MODALS ═══════ -->
 <div class="modal-backdrop" id="addModal">
@@ -617,24 +733,196 @@ if (localStorage.getItem("dark")==="true") document.documentElement.classList.ad
 // ══════════════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════════════
-let currentTab = "tracking";
+let currentTab = "cola";
+const ESTACIONES_TABS = ["corte","enchape","mecanizado","packing"];
+const CONTROL_TABS = ["capacidad","historico","rendimiento"];
+
 function switchTab(tab) {
   currentTab = tab;
+  // Deactivate all tabs and panels
   qa(".nav-tab").forEach(t => t.classList.remove("active"));
   qa(".tab-panel").forEach(p => p.classList.remove("active"));
-  qs(`#tab-${tab}`).classList.add("active");
-  qs(`#panel-${tab}`).classList.add("active");
   
-  if (tab === "tracking") loadTracking();
-  if (tab === "cola") loadQueue();
-  if (tab === "dia") loadDayData();
-  if (tab === "historico") loadHistorical();
-  if (tab === "capacidad") loadCapacity();
-  if (tab === "prepacking") loadPrePacking();
+  // Activate the clicked tab button
+  const tabBtn = qs(`#tab-${tab}`);
+  if (tabBtn) tabBtn.classList.add("active");
+  
+  // Highlight parent dropdown label
+  if (ESTACIONES_TABS.includes(tab)) {
+    qs("#tab-estaciones").classList.add("active");
+  } else if (CONTROL_TABS.includes(tab)) {
+    qs("#tab-control").classList.add("active");
+  }
+  
+  // Show panel — Día is a sub-section of mecanizado, handle separately  
+  const panel = qs(`#panel-${tab}`);
+  if (panel) panel.classList.add("active");
+  
+  // Load data for the tab
+  const loaders = {
+    cola: loadQueue,
+    corte: loadCorte,
+    enchape: loadEnchape,
+    mecanizado: loadTracking,
+    packing: loadPrePacking,
+    capacidad: loadCapacity,
+    historico: loadHistorical,
+    rendimiento: loadRendimiento,
+  };
+  if (loaders[tab]) loaders[tab]();
 }
 
 // ══════════════════════════════════════════════
-// TAB 0: TRACKING POR PROYECTO
+// MECANIZADO SUB-TAB SWITCHING
+// ══════════════════════════════════════════════
+function switchMecSub(sub) {
+  ["tracking","dia"].forEach(s => {
+    const p = qs(`#mec-panel-${s}`);
+    const t = qs(`#mec-${s}`);
+    if (p) p.style.display = s === sub ? "" : "none";
+    if (t) t.classList.toggle("active", s === sub);
+  });
+  if (sub === "dia") loadDayData();
+}
+
+// ══════════════════════════════════════════════
+// ESTACIÓN: CORTE
+// ══════════════════════════════════════════════
+async function loadCorte() {
+  try {
+    const data = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
+    const items = data.filter(i => i.status !== "completed");
+    
+    const total = items.length;
+    const cutDone = items.filter(i => (i.stations||{}).corte === "completed").length;
+    const totalCutMin = items.reduce((s,i) => s + (i.cutting_time_est||0), 0);
+    
+    qs("#cqTotal").textContent = total;
+    qs("#cqTime").textContent = fmtMinFromMin(totalCutMin);
+    qs("#cqDone").textContent = cutDone;
+    qs("#cqPending").textContent = total - cutDone;
+    
+    qs("#corteBody").innerHTML = items.map((item, idx) => {
+      const st = (item.stations||{}).corte || "pending";
+      const dotIcon = st === "completed" ? "✓" : st === "in_progress" ? "▶" : "·";
+      const cutMin = item.cutting_time_est || 0;
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${idx+1}</td>
+        <td><div class="svc-name">${escH(item.service_name||"")}</div></td>
+        <td class="svc-client">${escH(item.client_name||"")}</td>
+        <td style="text-align:right;font-family:var(--mono)">${cutMin > 0 ? fmtMinFromMin(cutMin) : "—"}</td>
+        <td style="text-align:center"><div class="dot-mob ${st}" style="margin:0 auto">${dotIcon}</div></td>
+        <td style="text-align:center;font-size:12px">${item.packing_allowed ? "✓" : "—"}</td>
+      </tr>`;
+    }).join("");
+  } catch(e) { toast(e.message,"error"); }
+}
+
+// ══════════════════════════════════════════════
+// ESTACIÓN: ENCHAPE
+// ══════════════════════════════════════════════
+async function loadEnchape() {
+  try {
+    const data = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
+    const items = data.filter(i => i.status !== "completed");
+    
+    const total = items.length;
+    const edgeDone = items.filter(i => (i.stations||{}).enchape === "completed").length;
+    const totalEdgeSides = items.reduce((s,i) => s + (i.total_edge_sides||0), 0);
+    const totalEdgeMeters = items.reduce((s,i) => s + (i.edge_meters||0), 0);
+    const totalEdgeMin = items.reduce((s,i) => s + (i.edge_time_est_min||0), 0);
+    
+    qs("#eqTotal").textContent = total;
+    qs("#eqMeters").textContent = `${Math.round(totalEdgeMeters)} m`;
+    qs("#eqTime").textContent = fmtMinFromMin(totalEdgeMin);
+    qs("#eqDone").textContent = edgeDone;
+    
+    qs("#enchapeBody").innerHTML = items.map((item, idx) => {
+      const st = (item.stations||{}).enchape || "pending";
+      const dotIcon = st === "completed" ? "✓" : st === "in_progress" ? "▶" : "·";
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${idx+1}</td>
+        <td><div class="svc-name">${escH(item.service_name||"")}</div></td>
+        <td class="svc-client">${escH(item.client_name||"")}</td>
+        <td style="text-align:right;font-family:var(--mono)">${item.total_edge_sides||0}</td>
+        <td style="text-align:right;font-family:var(--mono)">${(item.edge_meters||0).toFixed(1)} m</td>
+        <td style="text-align:right;font-family:var(--mono)">${item.edge_time_est_min ? fmtMinFromMin(item.edge_time_est_min) : "—"}</td>
+        <td style="text-align:center"><div class="dot-mob ${st}" style="margin:0 auto">${dotIcon}</div></td>
+      </tr>`;
+    }).join("");
+  } catch(e) { toast(e.message,"error"); }
+}
+
+// ══════════════════════════════════════════════
+// CONTROL: RENDIMIENTO
+// ══════════════════════════════════════════════
+async function loadRendimiento() {
+  try {
+    const [cap, queue] = await Promise.all([
+      invokeFunction("production-service", { action:"capacity" }),
+      sbQuery("production_queue_status", "status=in.(pending,in_progress)&order=priority.asc"),
+    ]);
+    
+    const realAvg = cap.avg_cycle_seconds || 75;
+    const fixedEst = 80;
+    const diffPct = ((realAvg / fixedEst) - 1) * 100;
+
+    // Services with CNC data
+    const withCNC = queue.filter(i => (i.cnc_total_seconds||0) > 0 && (i.cnc_parts_done||0) > 0);
+    
+    qs("#rendimientoContent").innerHTML = `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">⚙ Mecanizado CNC — Estimado vs Real</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;margin-bottom:20px">
+          <div style="padding:16px;background:var(--bg);border-radius:8px;">
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Estimación fija</div>
+            <div style="font-family:var(--mono);font-size:32px;font-weight:700">80s</div>
+            <div style="font-size:12px;color:var(--text-3)">por pieza</div>
+          </div>
+          <div style="padding:16px;background:var(--bg);border-radius:8px;">
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Promedio real</div>
+            <div style="font-family:var(--mono);font-size:32px;font-weight:700;color:var(--accent)">${Math.round(realAvg)}s</div>
+            <div style="font-size:12px;color:var(--text-3)">por pieza (${cap.days_count} días)</div>
+          </div>
+          <div style="padding:16px;background:${diffPct>10?'var(--danger)':diffPct<-10?'var(--success)':'var(--warn)'};border-radius:8px;color:white;">
+            <div style="font-size:12px;opacity:.8;margin-bottom:8px">Diferencia</div>
+            <div style="font-family:var(--mono);font-size:32px;font-weight:700">${diffPct>0?"+":""}${Math.round(diffPct)}%</div>
+            <div style="font-size:12px;opacity:.8">${diffPct>0?"Real más lento":"Real más rápido"}</div>
+          </div>
+        </div>
+        ${withCNC.length ? `
+        <div class="card-title">Por servicio (con datos CNC reales)</div>
+        <div class="table-wrap">
+          <table class="queue-table">
+            <thead><tr><th>Servicio</th><th style="text-align:right">Piezas CNC</th><th style="text-align:right">Estimado</th><th style="text-align:right">Real</th><th style="text-align:right">Diferencia</th></tr></thead>
+            <tbody>${withCNC.map(i => {
+              const realSec = i.cnc_total_seconds;
+              const estSec = (i.cnc_parts_done||0) * 80;
+              const diff = estSec > 0 ? Math.round(((realSec/estSec)-1)*100) : 0;
+              return `<tr>
+                <td>${escH(i.service_name||"")}</td>
+                <td style="text-align:right;font-family:var(--mono)">${i.cnc_parts_done}/${i.parts_with_machining}</td>
+                <td style="text-align:right;font-family:var(--mono)">${fmtMin(estSec)}</td>
+                <td style="text-align:right;font-family:var(--mono);font-weight:600">${fmtMin(realSec)}</td>
+                <td style="text-align:right;font-family:var(--mono);color:${diff>10?'var(--danger)':diff<-10?'var(--success)':'var(--text)'}">${diff>0?"+":""}${diff}%</td>
+              </tr>`;
+            }).join("")}</tbody>
+          </table>
+        </div>` : `<p style="color:var(--text-3)">No hay servicios con datos CNC reales todavía.</p>`}
+      </div>
+      <div class="card">
+        <div class="card-title">✂ Corte / ▤ Enchape — Solo estimaciones</div>
+        <p style="color:var(--text-3);font-size:13px">
+          Los datos reales de corte y enchape estarán disponibles cuando se integren las máquinas correspondientes.
+          Actualmente solo se muestran estimaciones de MobCloud.
+        </p>
+      </div>
+    `;
+  } catch(e) { toast(e.message,"error"); }
+}
+
+// ══════════════════════════════════════════════
+// TAB 0: TRACKING POR PROYECTO (MECANIZADO)
 // ══════════════════════════════════════════════
 let trackServices = [];
 let trackProjects = [];
@@ -885,6 +1173,7 @@ function renderTrackParts() {
 // TAB 1: COLA DE PRODUCCIÓN
 // ══════════════════════════════════════════════
 let queueData = [];
+let packingProgress = {};  // service_id → {total, scanned, complete}
 
 async function loadQueue() {
   try {
@@ -900,7 +1189,22 @@ async function loadQueue() {
       console.warn("sync-queue failed (offline?):", e.message);
     }
     
-    queueData = await sbQuery("production_queue_status", "order=priority.asc,created_at.asc");
+    // Load queue + packing progress in parallel
+    const [qData, ppData] = await Promise.all([
+      sbQuery("production_queue_status", "order=priority.asc,created_at.asc"),
+      sbQuery("vw_packing_service_progress", "").catch(() => []),
+    ]);
+    queueData = qData;
+    
+    packingProgress = {};
+    for (const p of ppData) {
+      packingProgress[p.service_id] = {
+        total: p.total_expected || 0,
+        scanned: p.total_scanned || 0,
+        complete: (p.pct_complete || 0) >= 100,
+      };
+    }
+    
     renderQueue();
   } catch(e) { toast(e.message,"error"); }
 }
@@ -938,15 +1242,35 @@ function renderQueue() {
     const cutEst = item.cutting_time_est > 0 ? fmtMinFromMin(item.cutting_time_est) : "";
     const edgeEst = item.edge_time_est_min ? fmtMinFromMin(item.edge_time_est_min) : "";
 
-    // Station statuses (stored in item or default)
+    // MobCloud stations (manual, from Alan)
     const st = item.stations || {};
     const stCorte = st.corte || "pending";
     const stEnchape = st.enchape || "pending";
-    const stMecanizado = pct >= 100 ? "completed" : pct > 0 ? "in_progress" : (st.mecanizado || "pending");
-    const stPrepack = st.prepacking || "pending";
+    const stMecanizado = st.mecanizado || "pending";
     const stPacking = st.packing || "pending";
     
-    const dotIcon = s => s === "completed" ? "✓" : s === "in_progress" ? "▶" : "·";
+    // Auto-detected stations (from real machine data)
+    // Corte: no machine integration yet → no_data
+    const autoCorte = "no_data";
+    // Enchape: no machine integration yet → no_data
+    const autoEnchape = "no_data";
+    // Mecanizado: from CNC cycles (real data!)
+    const autoCNC = pct >= 100 ? "completed" : pct > 0 ? "in_progress" : "pending";
+    // Packing: from barcode scans
+    const pp = packingProgress[item.service_id];
+    const autoPacking = pp ? (pp.complete ? "completed" : pp.scanned > 0 ? "in_progress" : "pending") : "no_data";
+    
+    const dotIcon = s => s === "completed" ? "✓" : s === "in_progress" ? "▶" : s === "no_data" ? "" : "·";
+
+    // Dual cell helper: MobCloud circle + Auto square
+    const dualCell = (mob, auto, info) => `
+      <td class="station-cell">
+        <div class="dual-dots">
+          <div class="dot-mob ${mob}" onclick="cycleStation('${item.id}','${mob === stCorte ? 'corte' : mob === stEnchape ? 'enchape' : mob === stMecanizado ? 'mecanizado' : 'packing'}',this)" title="MobCloud (manual)">${dotIcon(mob)}</div>
+          <div class="dot-auto ${auto}" title="Auto-detectado">${dotIcon(auto)}</div>
+        </div>
+        ${info ? `<div class="station-info">${info}</div>` : ""}
+      </td>`;
     
     return `<tr data-id="${item.id}">
       <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">${idx+1}</td>
@@ -954,25 +1278,36 @@ function renderQueue() {
         <div class="svc-name">${escH(item.service_name||"")} <span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">#${item.service_id}</span></div>
         ${item.client_name ? `<div class="svc-client">${escH(item.client_name)}</div>` : ""}
         ${item.description ? `<div class="svc-desc">${escH(item.description)}</div>` : ""}
+        ${item.scheduled_date ? `<div style="font-size:10px;color:var(--text-3);font-family:var(--mono);margin-top:2px">📅 ${item.scheduled_date}</div>` : ""}
       </td>
       <td class="station-cell">
-        <div class="station-dot ${stCorte}" onclick="cycleStation('${item.id}','corte',this)" title="Click para cambiar">${dotIcon(stCorte)}</div>
+        <div class="dual-dots">
+          <div class="dot-mob ${stCorte}" onclick="cycleStation('${item.id}','corte',this)" title="MobCloud (manual)">${dotIcon(stCorte)}</div>
+          <div class="dot-auto ${autoCorte}" title="Auto-detectado">${dotIcon(autoCorte)}</div>
+        </div>
         ${cutEst ? `<div class="station-info">${cutEst}</div>` : ""}
       </td>
       <td class="station-cell">
-        <div class="station-dot ${stEnchape}" onclick="cycleStation('${item.id}','enchape',this)" title="Click para cambiar">${dotIcon(stEnchape)}</div>
+        <div class="dual-dots">
+          <div class="dot-mob ${stEnchape}" onclick="cycleStation('${item.id}','enchape',this)" title="MobCloud (manual)">${dotIcon(stEnchape)}</div>
+          <div class="dot-auto ${autoEnchape}" title="Auto-detectado">${dotIcon(autoEnchape)}</div>
+        </div>
         ${edgeEst ? `<div class="station-info">${edgeEst}</div>` : ""}
       </td>
       <td class="station-cell">
-        <div class="station-dot ${stMecanizado}" onclick="cycleStation('${item.id}','mecanizado',this)" title="Click para cambiar">${dotIcon(stMecanizado)}</div>
+        <div class="dual-dots">
+          <div class="dot-mob ${stMecanizado}" onclick="cycleStation('${item.id}','mecanizado',this)" title="MobCloud (manual)">${dotIcon(stMecanizado)}</div>
+          <div class="dot-auto ${autoCNC}" title="Auto: ${item.cnc_parts_done||0}/${item.parts_with_machining||0}">${dotIcon(autoCNC)}</div>
+        </div>
         <div class="station-info">${item.cnc_parts_done||0}/${item.parts_with_machining||0} pzas</div>
         ${cncEst || cncReal ? `<div class="station-info">${cncReal ? '<b>'+cncReal+'</b>' : cncEst}</div>` : ""}
       </td>
       <td class="station-cell">
-        <div class="station-dot ${stPrepack}" onclick="cycleStation('${item.id}','prepacking',this)" title="Click para cambiar">${dotIcon(stPrepack)}</div>
-      </td>
-      <td class="station-cell">
-        <div class="station-dot ${stPacking}" onclick="cycleStation('${item.id}','packing',this)" title="Click para cambiar">${dotIcon(stPacking)}</div>
+        <div class="dual-dots">
+          <div class="dot-mob ${stPacking}" onclick="cycleStation('${item.id}','packing',this)" title="MobCloud (manual)">${dotIcon(stPacking)}</div>
+          <div class="dot-auto ${autoPacking}" title="Auto: scanner">${dotIcon(autoPacking)}</div>
+        </div>
+        ${pp ? `<div class="station-info">${pp.scanned}/${pp.total}</div>` : ""}
       </td>
       <td class="queue-actions">
         <button class="btn btn-sm btn-secondary" onclick="removeFromQueue('${item.id}')" title="Quitar">✕</button>
@@ -1017,12 +1352,12 @@ async function cycleStation(itemId, station, dotEl) {
 
   // Visual update immediately
   const icon = next === "completed" ? "✓" : next === "in_progress" ? "▶" : "·";
-  dotEl.className = `station-dot ${next}`;
+  dotEl.className = `dot-mob ${next}`;
   dotEl.textContent = icon;
 
   // Auto-update overall status based on stations
   let newStatus = item.status;
-  const allStations = ["corte","enchape","mecanizado","prepacking","packing"];
+  const allStations = ["corte","enchape","mecanizado","packing"];
   const allCompleted = allStations.every(s => (st[s] || "pending") === "completed");
   const anyInProgress = allStations.some(s => ["in_progress","completed"].includes(st[s] || "pending"));
   if (allCompleted) newStatus = "completed";
@@ -1288,7 +1623,8 @@ function renderHistorical() {
 
 function goToDay(date) {
   qs("#dayDate").value = date;
-  switchTab("dia");
+  switchTab("mecanizado");
+  switchMecSub("dia");
 }
 
 // ══════════════════════════════════════════════
@@ -1375,7 +1711,7 @@ function renderComparison(cap) {
 }
 
 // ══════════════════════════════════════════════
-// TAB 5: PRE PACKING
+// TAB 5: PACKING (was Pre Packing)
 // ══════════════════════════════════════════════
 async function loadPrePacking() {
   try {
@@ -1469,9 +1805,10 @@ async function loadPrePacking() {
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
-// Default: last 30 days
 trackSetRange("month");
 qs("#dayDate").value = todayStr();
+// Load Cola (default tab)
+loadQueue();
 </script>
 </body>
 </html>
