@@ -680,6 +680,7 @@
     <button class="nav-tab active" onclick="switchCorteSub('hoy')" id="corte-hoy">Hoy en vivo</button>
     <button class="nav-tab" onclick="switchCorteSub('servicios')" id="corte-servicios">Servicios</button>
     <button class="nav-tab" onclick="switchCorteSub('tendencia')" id="corte-tendencia">Tendencia</button>
+    <button class="nav-tab" onclick="switchCorteSub('prep')" id="corte-prep">📦 Prep Material</button>
     <button class="nav-tab" onclick="switchCorteSub('analytics')" id="corte-analytics">🤖 Analytics IA</button>
   </div>
 
@@ -836,6 +837,81 @@
     </div>
 
   </div><!-- end corte-panel-tendencia -->
+
+  <!-- SUB: PREP MATERIAL -->
+  <div id="corte-panel-prep" style="display:none">
+
+    <div class="card">
+      <div class="card-title">📦 Preparar material para corte</div>
+      <p style="font-size:12px;color:var(--text-2);margin:0 0 12px">
+        Seleccioná los proyectos que van a corte mañana. El sistema calcula las placas por espesor y el orden de apilado por proyecto.
+      </p>
+
+      <!-- Service selector -->
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <label style="font-size:12px;font-weight:600">Fecha de corte:</label>
+        <input type="date" id="prepDate" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text)">
+        <button class="btn btn-primary btn-sm" onclick="calcPrepMaterial()">Calcular materiales</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleAllPrep()" id="prepToggleBtn">Seleccionar todos</button>
+      </div>
+
+      <div id="prepServiceList" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px">
+        <div class="empty">Cargando cola de producción...</div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="prepResults" style="display:none">
+
+      <!-- Summary KPIs -->
+      <div class="metrics-row" style="grid-template-columns:repeat(4,1fr)">
+        <div class="metric-card">
+          <div class="metric-label">Proyectos</div>
+          <div class="metric-value" id="prepProjects">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total placas</div>
+          <div class="metric-value" id="prepTotalBoards">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Espesores distintos</div>
+          <div class="metric-value" id="prepThicknesses">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Cortes estimados</div>
+          <div class="metric-value" id="prepCuts">0</div>
+        </div>
+      </div>
+
+      <!-- Stacking order: per project, then by thickness -->
+      <div class="card">
+        <div class="card-title">🏗️ Orden de apilado (por proyecto)</div>
+        <p style="font-size:11px;color:var(--text-3);margin:0 0 10px">
+          Apilar en este orden: primero el último proyecto (queda abajo), último el primero (queda arriba, se corta primero).
+        </p>
+        <div id="prepStackOrder"></div>
+      </div>
+
+      <!-- Global totals by thickness -->
+      <div class="card">
+        <div class="card-title">📊 Resumen total por espesor</div>
+        <table class="queue-table" style="font-size:12px">
+          <thead>
+            <tr><th>Espesor</th><th>Descripción</th><th style="text-align:right">Placas</th><th style="text-align:right">Proyectos</th></tr>
+          </thead>
+          <tbody id="prepThicknessTable"></tbody>
+          <tfoot id="prepThicknessFoot" style="font-weight:700;border-top:2px solid var(--border)"></tfoot>
+        </table>
+      </div>
+
+      <!-- Print button -->
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn btn-secondary" onclick="printPrepMaterial()">🖨️ Imprimir lista de materiales</button>
+      </div>
+
+    </div><!-- end prepResults -->
+
+  </div><!-- end corte-panel-prep -->
 
   <!-- SUB: ANALYTICS IA -->
   <div id="corte-panel-analytics" style="display:none">
@@ -1177,7 +1253,7 @@ let corteBaseline = [];
 let corteDaily = [];
 
 function switchCorteSub(sub) {
-  ["hoy","servicios","tendencia","analytics"].forEach(s => {
+  ["hoy","servicios","tendencia","prep","analytics"].forEach(s => {
     const p = qs(`#corte-panel-${s}`);
     const t = qs(`#corte-${s}`);
     if (p) p.style.display = s === sub ? "" : "none";
@@ -1185,6 +1261,7 @@ function switchCorteSub(sub) {
   });
   if (sub === "servicios") loadCorteServicios();
   if (sub === "tendencia") loadCorteTendencia();
+  if (sub === "prep") loadPrepPanel();
   if (sub === "analytics") loadCorteAnalytics();
 }
 
@@ -1515,6 +1592,316 @@ async function loadCorteTendencia() {
     console.error("loadCorteTendencia:", e);
     toast("Tendencia corte: " + e.message, "error");
   }
+}
+
+// ══════════════════════════════════════════════
+// CORTE: PREP MATERIAL (Pre-staging)
+// ══════════════════════════════════════════════
+let prepQueueData = [];
+let prepAllSelected = false;
+
+async function loadPrepPanel() {
+  // Set default date to tomorrow
+  const dateEl = qs("#prepDate");
+  if (dateEl && !dateEl.value) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateEl.value = tomorrow.toISOString().split("T")[0];
+  }
+  
+  // Load production queue (pending & in_progress)
+  try {
+    const data = await sbQuery("production_queue_status", "order=priority.asc");
+    prepQueueData = data.filter(i => i.status === "pending" || i.status === "in_progress");
+    renderPrepServiceList();
+  } catch(e) {
+    console.error("[prep]", e);
+    qs("#prepServiceList").innerHTML = `<div class="empty" style="color:var(--danger)">Error: ${e.message}</div>`;
+  }
+}
+
+function renderPrepServiceList() {
+  const el = qs("#prepServiceList");
+  if (!prepQueueData.length) {
+    el.innerHTML = '<div class="empty">No hay servicios en cola de producción</div>';
+    return;
+  }
+  
+  el.innerHTML = prepQueueData.map((svc, idx) => {
+    const parts = svc.total_parts || "?";
+    const boards = svc.boards_est || "?";
+    const statusBadge = svc.status === "in_progress" 
+      ? '<span style="background:#eab308;color:#000;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">En curso</span>' 
+      : '';
+    return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:4px;transition:background .15s"
+              onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+      <input type="checkbox" class="prep-check" value="${svc.service_id}" data-idx="${idx}"
+        style="margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px">
+          ${escH(svc.service_name || "Servicio " + svc.service_id)}${statusBadge}
+        </div>
+        <div style="font-size:11px;color:var(--text-2)">
+          ${escH(svc.client_name || "")}${svc.description ? " — " + escH(svc.description) : ""}
+        </div>
+        <div style="font-size:11px;color:var(--text-3);display:flex;gap:12px;margin-top:2px">
+          <span>ID: ${svc.service_id}</span>
+          <span>Piezas: ${parts}</span>
+          <span>Prioridad: ${svc.priority}</span>
+        </div>
+      </div>
+    </label>`;
+  }).join("");
+}
+
+function toggleAllPrep() {
+  prepAllSelected = !prepAllSelected;
+  qa(".prep-check").forEach(cb => cb.checked = prepAllSelected);
+  qs("#prepToggleBtn").textContent = prepAllSelected ? "Deseleccionar todos" : "Seleccionar todos";
+}
+
+async function calcPrepMaterial() {
+  const checks = [...qa(".prep-check:checked")];
+  if (!checks.length) {
+    toast("Seleccioná al menos un proyecto", "error");
+    return;
+  }
+  
+  const selectedIds = checks.map(cb => parseInt(cb.value));
+  showLoading("Calculando materiales...");
+  
+  try {
+    // Fetch mob_quotes_detail for each selected service
+    const details = await sbQuery("mob_quotes_detail", 
+      `service_id=in.(${selectedIds.join(",")})&select=service_id,materials_optimizations_json,itens_json,raw_detail_json,optimizations_json`
+    );
+    
+    // Map detail by service_id
+    const detailMap = {};
+    for (const d of details) detailMap[d.service_id] = d;
+    
+    // Build project board data
+    const projects = [];
+    let globalTotalBoards = 0;
+    let globalTotalCuts = 0;
+    const globalByThickness = {}; // thickness => { desc, qty, projects: Set }
+    
+    for (const svc of prepQueueData) {
+      if (!selectedIds.includes(svc.service_id)) continue;
+      
+      const det = detailMap[svc.service_id];
+      const matSrc = det?.materials_optimizations_json || det?.itens_json || {};
+      const rawDet = det?.raw_detail_json || {};
+      const boards = matSrc.boards || [];
+      const opt = det?.optimizations_json || {};
+      
+      // Official board quantities from raw_detail
+      const officialBoards = rawDet.materials?.boards || [];
+      const officialMap = {};
+      for (const ob of officialBoards) {
+        if (ob.internal_code) officialMap[ob.internal_code] = parseInt(ob.quantity || 0);
+      }
+      
+      // Group boards by thickness for this project
+      const byThickness = {};
+      let projTotal = 0;
+      
+      for (const b of boards) {
+        const thick = parseFloat(b.thickness || b.depth || b.espesor || 0);
+        if (thick <= 0) continue;
+        
+        const code = b.code || b.internal_code || "";
+        const qty = officialMap[code] || parseInt(b.consumption || b.quantity || 1);
+        const desc = boardDesc(b);
+        const thickKey = thick.toFixed(1);
+        
+        if (!byThickness[thickKey]) {
+          byThickness[thickKey] = { thickness: thick, boards: [], total: 0 };
+        }
+        byThickness[thickKey].boards.push({ desc, qty, code, thick, dims: boardDims(b) });
+        byThickness[thickKey].total += qty;
+        projTotal += qty;
+        
+        // Global aggregation
+        if (!globalByThickness[thickKey]) {
+          globalByThickness[thickKey] = { thickness: thick, desc: desc, qty: 0, projects: new Set() };
+        }
+        globalByThickness[thickKey].qty += qty;
+        globalByThickness[thickKey].projects.add(svc.service_name || svc.service_id);
+      }
+      
+      projects.push({
+        service_id: svc.service_id,
+        name: svc.service_name || "Servicio " + svc.service_id,
+        client: svc.client_name || "",
+        byThickness,
+        totalBoards: projTotal,
+        cuttingTimes: parseInt(opt.cutting_times || 0),
+      });
+      
+      globalTotalBoards += projTotal;
+      globalTotalCuts += parseInt(opt.cutting_times || 0);
+    }
+    
+    // Sort projects by priority (same order as queue)
+    // Thicknesses sorted descending (thicker first = bottom of stack)
+    
+    // Render KPIs
+    const thicknessCount = Object.keys(globalByThickness).length;
+    qs("#prepProjects").textContent = projects.length;
+    qs("#prepTotalBoards").textContent = globalTotalBoards;
+    qs("#prepThicknesses").textContent = thicknessCount;
+    qs("#prepCuts").textContent = globalTotalCuts || "?";
+    
+    // Render stacking order (per project)
+    renderStackOrder(projects);
+    
+    // Render global thickness table
+    renderThicknessTable(globalByThickness, globalTotalBoards);
+    
+    qs("#prepResults").style.display = "";
+    
+  } catch(e) {
+    console.error("[prep] calc error:", e);
+    toast("Error calculando materiales: " + e.message, "error");
+  } finally {
+    hideLoading();
+  }
+}
+
+function boardDesc(b) {
+  const parts = [];
+  if (b.brand) parts.push(String(b.brand).replace(/®/g, "").trim());
+  if (b.color) parts.push(String(b.color).trim());
+  if (b.kind) parts.push(String(b.kind).trim());
+  if (b.finishing) parts.push(String(b.finishing).trim());
+  if (parts.length) return parts.join(" ");
+  if (b.custom_name) return b.custom_name;
+  if (b.commercial_name) return b.commercial_name;
+  if (b.description) return b.description;
+  return b.code || "Placa s/desc";
+}
+
+function boardDims(b) {
+  const c = parseFloat(b.c || b.width || 0);
+  const l = parseFloat(b.l || b.height || 0);
+  if (c > 0 && l > 0) return `${c}x${l}`;
+  return "";
+}
+
+function renderStackOrder(projects) {
+  const el = qs("#prepStackOrder");
+  
+  // Color palette for thickness badges
+  const thickColors = {
+    "3.0": "#f87171", "6.0": "#fb923c", "9.0": "#fbbf24",
+    "12.0": "#a3e635", "15.0": "#34d399", "18.0": "#38bdf8",
+    "22.0": "#818cf8", "25.0": "#c084fc", "30.0": "#f472b6",
+  };
+  const defaultColor = "var(--accent)";
+  
+  el.innerHTML = projects.map((proj, idx) => {
+    const thickKeys = Object.keys(proj.byThickness).sort((a, b) => parseFloat(b) - parseFloat(a));
+    
+    const boardRows = thickKeys.map(tk => {
+      const g = proj.byThickness[tk];
+      const color = thickColors[tk] || defaultColor;
+      
+      // Group same-desc boards
+      const grouped = {};
+      for (const b of g.boards) {
+        const key = b.desc;
+        if (!grouped[key]) grouped[key] = { desc: b.desc, dims: b.dims, qty: 0 };
+        grouped[key].qty += b.qty;
+      }
+      
+      return Object.values(grouped).map(bg => 
+        `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="background:${color};color:#fff;font-weight:700;padding:2px 8px;border-radius:10px;font-size:11px;min-width:42px;text-align:center">${tk}mm</span>
+          <span style="flex:1;font-size:12px;color:var(--text)">${escH(bg.desc)}</span>
+          ${bg.dims ? `<span style="font-size:10px;color:var(--text-3);font-family:var(--mono)">${bg.dims}</span>` : ""}
+          <span style="font-family:var(--mono);font-weight:700;font-size:14px;min-width:30px;text-align:right">${bg.qty}</span>
+          <span style="font-size:10px;color:var(--text-3)">placas</span>
+        </div>`
+      ).join("");
+    }).join("");
+    
+    const stackPosition = projects.length - idx;
+    const arrow = idx === 0 ? "⬆ ARRIBA (se corta primero)" : idx === projects.length - 1 ? "⬇ ABAJO (se corta último)" : "";
+    
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">
+      <div style="background:var(--surface);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+        <div>
+          <span style="background:var(--accent);color:#fff;font-weight:700;font-size:11px;padding:2px 8px;border-radius:10px;margin-right:6px">#${stackPosition}</span>
+          <strong style="font-size:13px">${escH(proj.name)}</strong>
+          ${proj.client ? `<span style="font-size:11px;color:var(--text-2);margin-left:8px">${escH(proj.client)}</span>` : ""}
+        </div>
+        <div style="font-family:var(--mono);font-weight:700;font-size:15px">${proj.totalBoards} <span style="font-size:10px;font-weight:400;color:var(--text-3)">placas</span></div>
+      </div>
+      ${arrow ? `<div style="text-align:center;font-size:10px;font-weight:600;color:var(--accent);padding:3px;background:rgba(99,102,241,.08)">${arrow}</div>` : ""}
+      <div style="padding:6px 14px">${boardRows || '<div style="font-size:12px;color:var(--text-3);padding:8px 0">Sin datos de materiales cacheados</div>'}</div>
+    </div>`;
+  }).join("") || '<div class="empty">Sin proyectos seleccionados</div>';
+}
+
+function renderThicknessTable(globalByThickness, totalBoards) {
+  const sorted = Object.entries(globalByThickness).sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]));
+  
+  qs("#prepThicknessTable").innerHTML = sorted.map(([tk, g]) => {
+    const pct = totalBoards > 0 ? ((g.qty / totalBoards) * 100).toFixed(0) : 0;
+    const barW = totalBoards > 0 ? ((g.qty / totalBoards) * 100) : 0;
+    return `<tr>
+      <td><strong>${tk} mm</strong></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+            <div style="width:${barW}%;height:100%;background:var(--accent);border-radius:4px"></div>
+          </div>
+          <span style="font-size:11px;color:var(--text-3);min-width:28px">${pct}%</span>
+        </div>
+      </td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700">${g.qty}</td>
+      <td style="text-align:right;font-size:11px">${g.projects.size}</td>
+    </tr>`;
+  }).join("");
+  
+  qs("#prepThicknessFoot").innerHTML = `<tr>
+    <td>TOTAL</td><td></td>
+    <td style="text-align:right;font-family:var(--mono)">${totalBoards}</td>
+    <td></td>
+  </tr>`;
+}
+
+function printPrepMaterial() {
+  const results = qs("#prepResults");
+  if (!results || results.style.display === "none") {
+    toast("Calculá los materiales primero", "error");
+    return;
+  }
+  
+  const dateVal = qs("#prepDate")?.value || "sin fecha";
+  
+  let wrapper = document.getElementById("printWrapper");
+  if (wrapper) wrapper.remove();
+  
+  wrapper = document.createElement("div");
+  wrapper.id = "printWrapper";
+  wrapper.style.display = "none";
+  wrapper.innerHTML = `
+    <div class="print-header">
+      <h2>Lista de Materiales para Corte</h2>
+      <div class="print-sub">Fecha: ${dateVal} - Generado: ${new Date().toLocaleString("es-UY")} - La Buonora</div>
+    </div>
+  `;
+  
+  const clone = results.cloneNode(true);
+  clone.style.display = "block";
+  clone.querySelectorAll("button").forEach(el => el.remove());
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+  
+  window.print();
+  setTimeout(() => { const pw = document.getElementById("printWrapper"); if (pw) pw.remove(); }, 1000);
 }
 
 // ══════════════════════════════════════════════
